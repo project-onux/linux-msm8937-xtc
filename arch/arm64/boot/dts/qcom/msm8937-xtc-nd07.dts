@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * XTC Z8A (machine code ND07) - Snapdragon Wear 4100+ (SDM429W)
+ *
+ * SDM429W is an msm8937 derivative for Wear OS. This tree is the first
+ * bring-up: get a mainline kernel far enough to print on the panel and
+ * spawn a shell. No storage, USB or PMIC wiring yet.
+ *
+ * The framebuffer is handed over by lk2nd (cont-splash): it fills in reg,
+ * width, height, stride, format and flips status to "okay" before booting.
+ * status is "disabled" here so that a boot without that handover does not
+ * scribble over random RAM.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/clock/qcom,gcc-msm8917.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+#include "msm8937.dtsi"
+
+/ {
+	model = "XTC Z8A (ND07)";
+	compatible = "xtc,nd07", "qcom,msm8937";
+	chassis-type = "watch";
+
+	/*
+	 * Read back from the stock system at /proc/device-tree/. LK only ever
+	 * compares the first entry of each property, so keep them single-entry.
+	 */
+	qcom,msm-id = <0x1A0 0x00>;
+	qcom,board-id = <0x10B 0x06>;
+	qcom,pmic-id = <0x2001B 0x00 0x00 0x00>;
+
+	aliases {
+		serial0 = &blsp1_uart2;
+	};
+
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		stdout-path = "framebuffer0";
+
+		framebuffer0: framebuffer@80000000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x80000000 0x0 (320 * 360 * 3)>;
+			width = <320>;
+			height = <360>;
+			stride = <(320 * 3)>;
+			format = "r8g8b8";
+			status = "disabled";
+
+			/*
+			 * Deliberately no clocks / power-domains here: lk2nd already
+			 * brought MDSS and the panel up and keeps scanning out of this
+			 * buffer. Listing them would make simpledrm defer until the
+			 * GCC/RPM clock controller probes, which needs SMEM and may
+			 * never happen during bring-up - and then we would have no
+			 * console at all.
+			 */
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x40000000>;
+	};
+};
+
+&blsp1_uart2 {
+	status = "okay";
+};
