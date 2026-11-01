@@ -681,3 +681,16 @@ cam_avdd_2v8: cam-avdd-reg {
 	pinctrl-0 = <&cam_avdd_default>;
 };
 };
+
+/*
+ * ADSP remoteproc. The vendor reservation is 0x8b400000 + 0x1700000, which
+ * falls inside the adsp_mem alloc range in msm8937.dtsi, so the generic
+ * carveout is used as-is and no hard pinning is needed.
+ */
+&adsp {
+	status = "okay";
+};
+
+&adsp_mem {
+	status = "okay";
+};
