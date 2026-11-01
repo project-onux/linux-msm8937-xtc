@@ -1131,7 +1131,8 @@ int msm_ispif_subdev_init(struct camss *camss,
 		ispif->line[i].id = i;
 
 		if (camss->res->version == CAMSS_8x16 ||
-		    camss->res->version == CAMSS_8x39) {
+		    camss->res->version == CAMSS_8x39 ||
+		    camss->res->version == CAMSS_8x37) {
 			ispif->line[i].formats = ispif_formats_8x16;
 			ispif->line[i].nformats =
 					ARRAY_SIZE(ispif_formats_8x16);

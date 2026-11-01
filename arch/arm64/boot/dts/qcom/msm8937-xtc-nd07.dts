@@ -985,3 +985,22 @@ cam_avdd_2v8: cam-avdd-reg {
 		};
 	};
 };
+
+/*
+ * The gauge is the only thing that knows the pack; the charger just needs a
+ * battery description to apply its limits to.  The numbers are the vendor's
+ * configuration: 4.40 V float, 3000 mV empty.
+ */
+/ {
+	battery: battery {
+		compatible = "simple-battery";
+		voltage-min-design-microvolt = <3000000>;
+		voltage-max-design-microvolt = <4400000>;
+		energy-full-design-microwatt-hours = <1540000>;
+		charge-full-design-microamp-hours = <350000>;
+	};
+};
+
+&pm660_charger {
+	monitored-battery = <&battery>;
+};
