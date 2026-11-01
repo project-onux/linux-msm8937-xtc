@@ -127,6 +127,8 @@ static int apq8096_platform_probe(struct platform_device *pdev)
 
 static const struct of_device_id msm_snd_apq8096_dt_match[] = {
 	{.compatible = "qcom,apq8096-sndcard"},
+	/* Same DPCM shape and WCD9335 MCLK handling on msm8937 boards. */
+	{.compatible = "qcom,msm8937-sndcard"},
 	{}
 };
 
