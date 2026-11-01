@@ -3,6 +3,7 @@
  * Copyright (c) 2023, Dang Huynh <danct12@riseup.net>
  */
 
+#include <dt-bindings/sound/qcom,q6asm.h>
 #include <dt-bindings/clock/qcom,dsi-phy-28nm.h>
 #include <dt-bindings/clock/qcom,gcc-msm8917.h>
 #include <dt-bindings/clock/qcom,rpmcc.h>
@@ -2011,6 +2012,20 @@
 							#address-cells = <1>;
 							#size-cells = <0>;
 							#sound-dai-cells = <1>;
+
+							/*
+							 * q6asm-dai refuses to probe with no
+							 * children, so declare the front ends
+							 * this board can play through.
+							 */
+							dai@0 {
+								reg = <MSM_FRONTEND_DAI_MULTIMEDIA1>;
+								direction = <Q6ASM_DAI_RX>;
+							};
+							dai@1 {
+								reg = <MSM_FRONTEND_DAI_MULTIMEDIA2>;
+								direction = <Q6ASM_DAI_TX>;
+							};
 						};
 					};
 

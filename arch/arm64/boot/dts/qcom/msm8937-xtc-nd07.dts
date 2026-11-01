@@ -970,6 +970,9 @@ cam_avdd_2v8: cam-avdd-reg {
 
 		quat-mi2s-dai-link {
 			link-name = "QUATERNARY_MI2S_RX";
+			/* The amplifier is an I2S peripheral; without this the
+			 * port format and the amp both stay unconfigured. */
+			dai-format = "i2s";
 
 			cpu {
 				sound-dai = <&q6afedai QUATERNARY_MI2S_RX>;
