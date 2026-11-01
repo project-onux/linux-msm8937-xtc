@@ -573,9 +573,7 @@ static const char * const gpio_groups[] = {
 	"gpio111", "gpio112", "gpio113", "gpio114", "gpio115", "gpio116",
 	"gpio117", "gpio118", "gpio119", "gpio120", "gpio121", "gpio122",
 	"gpio123", "gpio124", "gpio125", "gpio126", "gpio127", "gpio128",
-	"gpio129", "gpio130", "gpio131", "gpio132", "gpio133", "gpio134",
-	"gpio135", "gpio136", "gpio137", "gpio138", "gpio139", "gpio140",
-	"gpio141", "gpio142", "gpio143", "gpio144", "gpio145", "gpio146",
+	"gpio129", "gpio130", "gpio131", "gpio132", "gpio133",
 };
 
 static const char * const blsp_spi1_groups[] = {

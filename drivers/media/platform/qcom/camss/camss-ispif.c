@@ -1114,6 +1114,9 @@ int msm_ispif_subdev_init(struct camss *camss,
 		ispif->line_num = 2;
 	else if (camss->res->version == CAMSS_8x39)
 		ispif->line_num = 3;
+	else if (camss->res->version == CAMSS_8x37)
+		/* Two CSIDs, so two ISPIF lines, exactly like the 8x16. */
+		ispif->line_num = 2;
 	else if (camss->res->version == CAMSS_8x96 ||
 		 camss->res->version == CAMSS_8x53 ||
 		 camss->res->version == CAMSS_660)

@@ -160,32 +160,22 @@
 		 * its phandle resolves to PM660 LDO3.
 		 */
 		pm660_l3: l3 {
-			regulator-min-microvolt = <1225000>;
-			regulator-max-microvolt = <1225000>;
 		};
 
 		/* WCNSS iris vddrfa. Stock runs 1.15 V; iris may ask for 1.30 V. */
 		pm660_l5: l5 {
-			regulator-min-microvolt = <1150000>;
-			regulator-max-microvolt = <1450000>;
 		};
 
 		/* USB HS phy dig (hsusb_vdd_dig) + MDSS vdda. Stock 0.80 V. */
 		pm660_l6: l6 {
-			regulator-min-microvolt = <670000>;
-			regulator-max-microvolt = <930000>;
 		};
 
 		/* Touch vcc_i2c (I2C pull-ups), both panels. Stock 1.80 V. */
 		pm660_l9: l9 {
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <2040000>;
 		};
 
 		/* Codec vdd_dig + AW8896 smart PA DVDD. Stock 1.20 V. */
 		pm660_l11: l11 {
-			regulator-min-microvolt = <1200000>;
-			regulator-max-microvolt = <2040000>;
 		};
 
 		/*
@@ -195,8 +185,6 @@
 		 * not model - it only knows the one "l12" resource.
 		 */
 		pm660_l12: l12 {
-			regulator-min-microvolt = <1620000>;
-			regulator-max-microvolt = <2040000>;
 		};
 
 		/*
@@ -204,26 +192,18 @@
 		 * 1.80 V. Heavily shared (474 uses in stock) - never gate it.
 		 */
 		pm660_l13: l13 {
-			regulator-min-microvolt = <1600000>;
-			regulator-max-microvolt = <2040000>;
 		};
 
 		/* Touch AVDD + DSI VDD. Stock 2.80 V. */
 		pm660_l15: l15 {
-			regulator-min-microvolt = <2800000>;
-			regulator-max-microvolt = <3400000>;
 		};
 
 		/* USB HSUSB_3p3. Stock 3.05 V. */
 		pm660_l16: l16 {
-			regulator-min-microvolt = <2970000>;
-			regulator-max-microvolt = <3400000>;
 		};
 
 		/* eMMC VMMC. Stock 3.20 V. */
 		pm660_l19: l19 {
-			regulator-min-microvolt = <2700000>;
-			regulator-max-microvolt = <3400000>;
 		};
 	};
 };
@@ -434,8 +414,23 @@
  * handshake GPIOs that ssp_dev.c currently requires, so the framework needs
  * a BCM4775 quirk (sensor list + optional handshake) before this can bind.
  */
+/*
+ * Correcting the note above: on the running device /sys/bus/spi/devices lists
+ * only "spi6.0" (spi@78b7000, bound to the vendor's "brcm gps spi" driver),
+ * and this bcm4775@0 node on spi@7af6000 is disabled in the vendor tree.  So
+ * the GNSS half of the BCM4775 is the interface this product uses, and this
+ * sensor-hub half is not.
+ *
+ * The sensors are not on SPI at all: the vendor binds
+ * /sys/bus/platform/drivers/sensors-ssc, i.e. they are served by the ADSP
+ * sensor core, and nothing is enumerated on the AP side.  Keep the node
+ * disabled so the wiring is documented without pretending it probes.  It has
+ * to stay disabled for a second reason: gps,power_enable is TLMM 137, and
+ * this SoC's pin controller only exposes 134 GPIOs (ngpios = 134), so that
+ * line cannot even be requested.
+ */
 &blsp2_spi2 {
-	status = "okay";
+	status = "disabled";
 
 	/*
 	 * Values read from the vendor node, which spells the cells out:
@@ -454,7 +449,6 @@
 		spi-max-frequency = <12000000>;
 		spi-cpha;
 
-		power-gpios = <&tlmm 137 GPIO_ACTIVE_HIGH>;
 		standby-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
 
 		/*
