@@ -451,7 +451,17 @@
 
 		power-gpios = <&tlmm 137 GPIO_ACTIVE_HIGH>;
 		standby-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
-		status-gpios = <&tlmm 66 GPIO_ACTIVE_HIGH>;
+
+		/*
+		 * ap-status is the only line the hub can raise, and the SSP
+		 * framework needs a threaded IRQ to pull packets, so it is
+		 * wired as the interrupt rather than as a plain GPIO.  The
+		 * polarity is a guess: the vendor node carries no interrupts
+		 * property at all, so falling edge is the common case for a
+		 * data-ready line.
+		 */
+		interrupt-parent = <&tlmm>;
+		interrupts = <66 IRQ_TYPE_EDGE_FALLING>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&hub_default>;

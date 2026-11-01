@@ -495,10 +495,6 @@ static struct ssp_data *ssp_parse_dt(struct device *dev)
 	if (IS_ERR(gpiod))
 		return NULL;
 
-	gpiod = devm_gpiod_get_optional(dev, "status", GPIOD_IN);
-	if (IS_ERR(gpiod))
-		return NULL;
-
 	data->sensorhub_info = device_get_match_data(dev);
 
 	dev_set_drvdata(dev, data);
