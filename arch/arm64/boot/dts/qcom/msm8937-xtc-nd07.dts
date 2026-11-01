@@ -415,3 +415,21 @@
 		spi-max-frequency = <1817344>;
 	};
 };
+
+/*
+ * Charger + RRADC. pm660.dtsi already describes charger@1000 with
+ * compatible "qcom,pm660-charger" (matched by mainline qcom_smbx.c) and
+ * adc@4500 as "qcom,pm660-rradc".  The charger needs the RRADC for the
+ * usbin_v/usbin_i channels that back VOLTAGE_NOW and CURRENT_NOW, so both
+ * get enabled together.
+ *
+ * The vendor node was "qcom,qpnp-smb2" with no interrupts property; the
+ * mainline driver polls, which is why no IRQ wiring is needed here.
+ */
+&pm660_charger {
+	status = "okay";
+};
+
+&pm660_rradc {
+	status = "okay";
+};
