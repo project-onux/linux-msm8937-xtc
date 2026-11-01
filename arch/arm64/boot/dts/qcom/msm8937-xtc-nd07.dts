@@ -16,6 +16,7 @@
 
 #include <dt-bindings/clock/qcom,gcc-msm8917.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/input/input.h>
 
 #include "msm8937.dtsi"
@@ -71,4 +72,63 @@
 
 &blsp1_uart2 {
 	status = "okay";
+};
+
+/*
+ * Haptic motor. The stock kernel has a private "xtc_vibrator" driver that
+ * hardcodes the GPIO; the DT only carries a pinctrl handle. Pin function and
+ * drive strength below were read back from the running device:
+ *     /soc/pinctrl@1000000/xtc_vibrator_pin
+ *         mux    { pins = "gpio129"; function = "gpio"; }
+ *         config { pins = "gpio129"; bias-disable; drive-strength = <2>; }
+ * Mainline gpio-vibrator covers this, so no custom driver is needed.
+ */
+/ {
+	vibrator_vcc: regulator-vibrator {
+		compatible = "regulator-fixed";
+		regulator-name = "vibrator_vcc";
+		regulator-min-microvolt = <3000000>;
+		regulator-max-microvolt = <3000000>;
+		regulator-always-on;
+	};
+
+	vibrator {
+		compatible = "gpio-vibrator";
+		vcc-supply = <&vibrator_vcc>;
+		enable-gpios = <&tlmm 129 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&vibrator_default>;
+	};
+};
+
+&tlmm {
+	vibrator_default: vibrator-default-state {
+		pins = "gpio129";
+		function = "gpio";
+		bias-disable;
+		drive-strength = <2>;
+	};
+};
+
+/*
+ * NXP NQ-series NFC controller on BLSP2 QUP1.
+ * Pin map read back from the vendor DT node /soc/i2c@7af5000/nq@28:
+ *     qcom,nq-irq  = <&tlmm 17 0>
+ *     qcom,nq-ven  = <&tlmm 16 0>
+ *     qcom,nq-firm = <&tlmm 130 0>
+ *     qcom,clk-src = "BBCLK2"
+ * Mainline nxp-nci-i2c covers it.
+ */
+&blsp2_i2c1 {
+	status = "okay";
+
+	nfc@28 {
+		compatible = "nxp,nxp-nci-i2c";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+		enable-gpios = <&tlmm 16 GPIO_ACTIVE_HIGH>;
+		firmware-gpios = <&tlmm 130 GPIO_ACTIVE_HIGH>;
+		clock-frequency = <400000>;
+	};
 };
