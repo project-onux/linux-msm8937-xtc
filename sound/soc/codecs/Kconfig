@@ -710,6 +710,16 @@ config SND_SOC_AW88261
 	  boost converter can be adjusted smartly according to
 	  the input amplitude.
 
+config SND_SOC_AW882XX
+	tristate "Soc Audio for awinic aw882xx"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This option enables support for the awinic AW882xx smart PA
+	  family, currently the AW88261.  The AW88261 is an I2S input,
+	  high efficiency Class-D smart speaker amplifier with an I2C
+	  control interface and an on-chip DSP for speaker protection.
+
 config SND_SOC_AW88081
 	tristate "Soc Audio for awinic aw88081/aw88083"
 	depends on I2C

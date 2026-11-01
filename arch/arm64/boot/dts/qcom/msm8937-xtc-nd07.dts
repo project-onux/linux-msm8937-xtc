@@ -433,3 +433,39 @@
 &pm660_rradc {
 	status = "okay";
 };
+
+/*
+ * Speaker amplifier. The part on the board reports chip id 0x2113, i.e. an
+ * Awinic AW88261, but it is wired without any regulator at all: the vendor
+ * driver calls no regulator API, and the vendor DT node carries no supply.
+ * That is why this uses the aw882xx driver rather than the in-tree
+ * aw88261.c, which unconditionally enables a "dvdd" supply.
+ *
+ * Vendor node /soc/i2c@78b6000/aw882xx_smartpa@34:
+ *     reg = <0x34>, reset-gpio = <&tlmm 68 0>, irq-gpio = <&tlmm 73 0>
+ * The codec is an I2S clock/frame consumer, so the CPU DAI has to be the
+ * bitclock and frame master.
+ */
+&blsp1_i2c2 {
+	status = "okay";
+
+	speaker-amp@34 {
+		compatible = "awinic,aw882xx";
+		reg = <0x34>;
+
+		reset-gpio = <&tlmm 68 GPIO_ACTIVE_LOW>;
+		irq-gpio = <&tlmm 73 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aw_pa_default>;
+	};
+};
+
+&tlmm {
+	aw_pa_default: aw-pa-default-state {
+		pins = "gpio68", "gpio73";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+};
