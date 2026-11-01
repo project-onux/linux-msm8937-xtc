@@ -469,3 +469,18 @@
 		bias-disable;
 	};
 };
+
+/*
+ * USB. The watch uses a ChipIdea HDRC (qcom,ci-hdrc) with a 28nm femto HS
+ * PHY, both already described in msm8937.dtsi but disabled.  Force
+ * peripheral mode so the port comes up as a gadget: this is the debug
+ * console, so RNDIS/ACM can be exposed through configfs.
+ */
+&usb {
+	status = "okay";
+	dr_mode = "peripheral";
+};
+
+&usb_hs_phy {
+	status = "okay";
+};
