@@ -392,3 +392,25 @@
 		bias-pull-down;
 	};
 };
+
+/*
+ * Sensor hub: Broadcom BCM4775 on BLSP2 QUP3 (spi@7af6000), chip select 0.
+ * The vendor node is /soc/spi@7af6000/bcm4775@0 with
+ *     compatible = "ssp,bcm4775"
+ *     reg = <0>, spi-max-frequency = <1817344>
+ * "ssp" is Samsung's Sensor Sub-Processor protocol, and mainline already
+ * carries a framework for it in drivers/iio/common/ssp_sensors/.
+ *
+ * NOTE: the stock node exposes neither interrupts nor the mcu-ap/ap-mcu
+ * handshake GPIOs that ssp_dev.c currently requires, so the framework needs
+ * a BCM4775 quirk (sensor list + optional handshake) before this can bind.
+ */
+&blsp2_spi2 {
+	status = "okay";
+
+	sensorhub@0 {
+		compatible = "ssp,bcm4775";
+		reg = <0>;
+		spi-max-frequency = <1817344>;
+	};
+};
