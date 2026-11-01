@@ -484,3 +484,112 @@
 &usb_hs_phy {
 	status = "okay";
 };
+
+/*
+ * Cameras.
+ *
+ * The watch has two camera slots; only the front one has a mainline driver:
+ *
+ *   slot 0 (rear)  sc520cs_TSP  CCI master 0, CSIPHY0/CSID0, MCLK0 = GPIO 26
+ *   slot 1 (front) ov5675_TSP   CCI master 1, CSIPHY1/CSID1, MCLK1 = GPIO 27
+ *
+ * Values below come from the merged device tree read off the running device
+ * (/sys/firmware/devicetree/base/soc/qcom,cci@1b0c000/qcom,camera@1):
+ *
+ *   gpios        = <26 36 58>  -> CAMIF_MCLK0, CAM_RESET0, CAM_VANA0
+ *   qcom,cci-master = <1>, qcom,csiphy-sd-index = <1>, qcom,csid-sd-index = <1>
+ *   qcom,clock-rates = <24000000 0>
+ *   qcom,cam-vreg-name = "cam_vdig", "cam_vio"  (1.225 V and 1.8 V)
+ *
+ * The rear sensor is not described here: there is no sc520cs driver in
+ * mainline, and a DT node without a driver is dead weight.
+ */
+&camss {
+	status = "okay";
+
+	ports {
+		port@1 {
+			reg = <1>;
+
+			csiphy1_ep: endpoint {
+				data-lanes = <1 2>;
+				remote-endpoint = <&ov5675_ep>;
+			};
+		};
+	};
+};
+
+&cci {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&cci_default>;
+};
+
+&cci_i2c1 {
+	/*
+	 * The sensor's I2C address is not in the vendor device tree (the
+	 * downstream driver hardcodes it), so 0x36 -- the OV5675 default and
+	 * what mainline uses elsewhere -- is assumed and still needs to be
+	 * confirmed on hardware.
+	 *
+	 * Supplies: the vendor node asks for cam_vdig (1.225 V) and cam_vio
+	 * (1.8 V); cam_vdig resolves to PM660 LDO3, which this board file does
+	 * not model yet, and cam_vio's phandle does not resolve to any
+	 * enumerable regulator node at all.  Rather than invent labels, the
+	 * supplies are omitted -- so this node will not probe until the rails
+	 * are added.  avdd (2.8 V) is behind the CAM_AVDD1 enable on GPIO 33
+	 * and is missing for the same reason.
+	 */
+	ov5675: camera@36 {
+		compatible = "ovti,ov5675";
+		reg = <0x36>;
+
+		reset-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_mclk1_default>, <&cam_reset1_default>;
+
+		/*
+		 * The vendor tree clocks this sensor at 24 MHz.  Mainline's
+		 * ov5675 driver only knows a 19.2 MHz XVCLK (its PLL tables are
+		 * written for it), and GCC can generate 19.2 MHz from XO, so
+		 * that is what is requested here.  If the module turns out to
+		 * need a real 24 MHz, the driver needs a second PLL table.
+		 */
+		clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+		assigned-clocks = <&gcc GCC_CAMSS_MCLK1_CLK>;
+		assigned-clock-rates = <19200000>;
+
+		port {
+			ov5675_ep: endpoint {
+				data-lanes = <1 2>;
+				link-frequencies = /bits/ 64 <450000000>;
+				remote-endpoint = <&csiphy1_ep>;
+			};
+		};
+	};
+};
+
+&tlmm {
+	/* CCI master 0 on GPIO 29/30, master 1 on GPIO 31/32. */
+	cci_default: cci-default-state {
+		pins = "gpio29", "gpio30", "gpio31", "gpio32";
+		function = "cci_i2c";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	cam_mclk1_default: cam-mclk1-default-state {
+		pins = "gpio27";
+		function = "cam_mclk";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
+	cam_reset1_default: cam-reset1-default-state {
+		pins = "gpio38";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
+};
