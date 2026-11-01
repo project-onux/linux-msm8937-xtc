@@ -21,6 +21,8 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/input/input.h>
 
+#include <dt-bindings/sound/qcom,q6asm.h>
+#include <dt-bindings/sound/qcom,q6dsp-lpass-ports.h>
 #include "msm8937.dtsi"
 #include "pm660.dtsi"
 
@@ -504,9 +506,11 @@
 &blsp1_i2c2 {
 	status = "okay";
 
-	speaker-amp@34 {
+	speaker_amp: speaker-amp@34 {
 		compatible = "awinic,aw882xx";
 		reg = <0x34>;
+
+		#sound-dai-cells = <0>;
 
 		reset-gpio = <&tlmm 68 GPIO_ACTIVE_LOW>;
 		irq-gpio = <&tlmm 73 GPIO_ACTIVE_HIGH>;
@@ -829,11 +833,15 @@ cam_avdd_2v8: cam-avdd-reg {
 
 &slim_ngd {
 	/*
-	 * Enabled so the NGD controller + BAM path actually probes; the codec
-	 * itself stays disabled above, so this comes up as an empty bus. The
-	 * vendor keeps SLIMbus off entirely because the ADSP firmware owns it.
+	 * Left disabled on purpose.  The vendor keeps SLIMbus off entirely on
+	 * this product (tasha_codec, slim@c140000, wcd9xxx-irq and sound-9335
+	 * are all disabled in its device tree) and the live sound card is
+	 * "sdm429-qrd-snd-card-AW", routing CDC_CONN/MCLK/TX_I2S_CLK through
+	 * the on-SoC digital codec into the AW88261 over I2S.  The nodes are
+	 * kept as a faithful description of an unpopulated chip, nothing more:
+	 * enabling them would also fight the amplifier for TLMM 68 and 73.
 	 */
-	status = "okay";
+	status = "disabled";
 
 	/*
 	 * One NGD instance. The vendor node has cell-index = <1>, and
@@ -885,13 +893,13 @@ cam_avdd_2v8: cam-avdd-reg {
 			vdd-rx-supply = <&codec_vdd_rx>;
 			vdd-tx-supply = <&codec_vdd_tx>;
 
-			status = "okay";
+			status = "disabled";
 		};
 	};
 };
 
 &slimbam {
-	status = "okay";
+	status = "disabled";
 };
 
 &tlmm {
@@ -924,4 +932,47 @@ cam_avdd_2v8: cam-avdd-reg {
  */
 &pm660_fg {
 	status = "okay";
+};
+
+/*
+ * Sound card.
+ *
+ * The vendor disables its WCD9335 entirely on this product: the live card is
+ * "sdm429-qrd-snd-card-AW", which routes through the on-SoC digital codec into
+ * the AW88261 over I2S.  The amplifier's own device tree cell proves the port:
+ * aw-rx-port-id = <0x1006>, which is AFE_PORT_ID_QUATERNARY_MI2S_RX.
+ *
+ * So the topology is q6asm front end -> q6adm routing -> q6afe quaternary MI2S
+ * -> AW88261 (an I2S clock and frame consumer, playback only).  No codec driver
+ * sits on the link because the amplifier is the I2S peripheral.
+ */
+/ {
+	sound {
+		compatible = "qcom,msm8937-sndcard";
+		model = "XTC Z8A";
+
+		mm1-dai-link {
+			link-name = "MultiMedia1";
+
+			cpu {
+				sound-dai = <&q6asmdai MSM_FRONTEND_DAI_MULTIMEDIA1>;
+			};
+		};
+
+		quat-mi2s-dai-link {
+			link-name = "QUATERNARY_MI2S_RX";
+
+			cpu {
+				sound-dai = <&q6afedai QUATERNARY_MI2S_RX>;
+			};
+
+			platform {
+				sound-dai = <&q6routing>;
+			};
+
+			codec {
+				sound-dai = <&speaker_amp>;
+			};
+		};
+	};
 };

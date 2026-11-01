@@ -1883,6 +1883,66 @@
 			};
 		};
 
+		/*
+		 * SLIMbus NGD (Non-Generic Device) controller, plus the BAM DMA
+		 * engine it uses for messaging.
+		 *
+		 * Everything below is read back from the vendor node
+		 * /soc/slim@c140000 (which keeps it "disabled"):
+		 *   compatible      = "qcom,slim-ngd"
+		 *   reg             = <0x0c140000 0x2c000>, <0x0c104000 0x2a000>
+		 *   reg-names       = "slimbus_physical", "slimbus_bam_physical"
+		 *   interrupts      = <0 0xa3 0>, <0 0xb4 0>
+		 *   interrupt-names = "slimbus_irq", "slimbus_bam_irq"
+		 *   cell-index      = <1>
+		 * i.e. the NGD core is GIC SPI 163, the BAM is GIC SPI 180.
+		 *
+		 * mainline wants the BAM as a separate dma-controller joined by
+		 * "dmas" (binding qcom,slim-ngd.yaml), so the two-reg vendor node is
+		 * split in two. qcom,bam-v1.7.0 is the same BAM generation msm8916
+		 * uses for BLSP; num-channels/qcom,ee/qcom,num-ees are copied from
+		 * msm8996's slimbam because the vendor DT does not describe this BAM
+		 * on its own - those three numbers are inferred, not measured.
+		 *
+		 * Deliberately omitted from the vendor node:
+		 *   - qcom,apps-ch-pipes = <0x00600000> and qcom,ea-pc = <0x230>:
+		 *     vendor-driver private, not documented by the mainline binding.
+		 *   - reg-names: the mainline binding allows a single reg.
+		 *
+		 * Compatible: qcom,slim-ngd-v1.5.0, not -v2.1.0. Both entries in
+		 * qcom-ngd-ctrl.c carry the same ngd_v1_5_offset_info (offset 0x1000,
+		 * size 0x1000) and ctrl->ver is never branched on, so the choice is
+		 * descriptive; v1.5.0 is the MSM8996-generation block, which is what
+		 * MSM8937's LPASS is, while v2.1.0 is documented as the SDM845 block.
+		 */
+		slimbam: dma-controller@c104000 {
+			compatible = "qcom,bam-v1.7.0";
+			reg = <0x0c104000 0x2a000>;
+			interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
+
+			#dma-cells = <1>;
+			num-channels = <31>;
+			qcom,ee = <1>;
+			qcom,num-ees = <2>;
+			qcom,controlled-remotely;
+
+			status = "disabled";
+		};
+
+		slim_ngd: slim-ngd@c140000 {
+			compatible = "qcom,slim-ngd-v1.5.0";
+			reg = <0x0c140000 0x2c000>;
+			interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
+
+			dmas = <&slimbam 3>, <&slimbam 4>;
+			dma-names = "rx", "tx";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			status = "disabled";
+		};
+
 		adsp: remoteproc@c200000 {
 			compatible = "qcom,msm8953-adsp-pil";
 			reg = <0x0c200000 0x100>;
