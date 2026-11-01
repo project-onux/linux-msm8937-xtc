@@ -243,7 +243,9 @@
  *     qcom,pronto-vddcx/vddmx   -> CX/MX corners, handled by rpmpd
  * qcom,iris-vddpa is absent on this board; see vdd_pa_3v3 above.
  *
- * The matching mainline iris is qcom,wcn3620 (19.2 MHz XO, 1.8 V vddxo and
+ * The matching mainline iris is qcom,wcn3680: the running device advertises
+ * 802.11ac VHT rates on 2.4 GHz, which is the 3680 family, and the earlier
+ * qcom,wcn3620 guess (19.2 MHz XO, 1.8 V vddxo and
  * vdddig, 3.3 V vddpa), as on the other pronto-v3 msm8937 boards
  * (msm8937-xiaomi-land.dts, msm8917-xiaomi-riva.dts). pronto_v3_data in
  * qcom_wcnss.c only bulk-gets "vddpx" (CX/MX come from power-domains), so all
@@ -256,7 +258,7 @@
 };
 
 &wcnss_iris {
-	compatible = "qcom,wcn3620";
+	compatible = "qcom,wcn3680";
 
 	vddxo-supply = <&pm660_l12>;
 	vddrfa-supply = <&pm660_l5>;
