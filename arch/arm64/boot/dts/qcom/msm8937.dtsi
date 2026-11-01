@@ -8,6 +8,7 @@
 #include <dt-bindings/clock/qcom,rpmcc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/power/qcom-rpmpd.h>
+#include <dt-bindings/soc/qcom,apr.h>
 #include <dt-bindings/thermal/thermal.h>
 
 / {
@@ -1271,6 +1272,125 @@
 			};
 		};
 
+		camss: camss@1b0ac00 {
+			compatible = "qcom,msm8937-camss";
+			reg = <0x01b34000 0x1000>,
+			      <0x01b00030 0x4>,
+			      <0x01b35000 0x1000>,
+			      <0x01b00038 0x4>,
+			      <0x01b30000 0x400>,
+			      <0x01b30400 0x400>,
+			      <0x01b31000 0x500>,
+			      <0x01b00020 0x10>,
+			      <0x01b10000 0x1000>;
+			reg-names = "csiphy0",
+				    "csiphy0_clk_mux",
+				    "csiphy1",
+				    "csiphy1_clk_mux",
+				    "csid0",
+				    "csid1",
+				    "ispif",
+				    "csi_clk_mux",
+				    "vfe0";
+			interrupts = <GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 51 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 52 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 55 IRQ_TYPE_EDGE_RISING>,
+				     <GIC_SPI 57 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "csiphy0",
+					  "csiphy1",
+					  "csid0",
+					  "csid1",
+					  "ispif",
+					  "vfe0";
+			power-domains = <&gcc VFE0_GDSC>;
+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
+				 <&gcc GCC_CAMSS_ISPIF_AHB_CLK>,
+				 <&gcc GCC_CAMSS_CSI0PHYTIMER_CLK>,
+				 <&gcc GCC_CAMSS_CSI1PHYTIMER_CLK>,
+				 <&gcc GCC_CAMSS_CSI0_AHB_CLK>,
+				 <&gcc GCC_CAMSS_CSI0_CLK>,
+				 <&gcc GCC_CAMSS_CSI0PHY_CLK>,
+				 <&gcc GCC_CAMSS_CSI0PIX_CLK>,
+				 <&gcc GCC_CAMSS_CSI0RDI_CLK>,
+				 <&gcc GCC_CAMSS_CSI1_AHB_CLK>,
+				 <&gcc GCC_CAMSS_CSI1_CLK>,
+				 <&gcc GCC_CAMSS_CSI1PHY_CLK>,
+				 <&gcc GCC_CAMSS_CSI1PIX_CLK>,
+				 <&gcc GCC_CAMSS_CSI1RDI_CLK>,
+				 <&gcc GCC_CAMSS_AHB_CLK>,
+				 <&gcc GCC_CAMSS_VFE0_CLK>,
+				 <&gcc GCC_CAMSS_CSI_VFE0_CLK>,
+				 <&gcc GCC_CAMSS_VFE0_AHB_CLK>,
+				 <&gcc GCC_CAMSS_VFE0_AXI_CLK>;
+			clock-names = "top_ahb",
+				      "ispif_ahb",
+				      "csiphy0_timer",
+				      "csiphy1_timer",
+				      "csi0_ahb",
+				      "csi0",
+				      "csi0_phy",
+				      "csi0_pix",
+				      "csi0_rdi",
+				      "csi1_ahb",
+				      "csi1",
+				      "csi1_phy",
+				      "csi1_pix",
+				      "csi1_rdi",
+				      "ahb",
+				      "vfe0",
+				      "csi_vfe0",
+				      "vfe_ahb",
+				      "vfe_axi";
+			status = "disabled";
+
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+				};
+
+				port@1 {
+					reg = <1>;
+				};
+			};
+		};
+
+		cci: cci@1b0c000 {
+			compatible = "qcom,msm8937-cci", "qcom,msm8226-cci";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x01b0c000 0x1000>;
+			interrupts = <GIC_SPI 50 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&gcc GCC_CAMSS_TOP_AHB_CLK>,
+				 <&gcc GCC_CAMSS_AHB_CLK>,
+				 <&gcc GCC_CAMSS_CCI_AHB_CLK>,
+				 <&gcc GCC_CAMSS_CCI_CLK>;
+			clock-names = "camss_top_ahb", "camss_ahb",
+				      "cci_ahb", "cci";
+			assigned-clocks = <&gcc GCC_CAMSS_CCI_AHB_CLK>,
+					  <&gcc GCC_CAMSS_CCI_CLK>;
+			assigned-clock-rates = <80000000>, <19200000>;
+			status = "disabled";
+
+			cci_i2c0: i2c-bus@0 {
+				reg = <0>;
+				clock-frequency = <400000>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+
+			cci_i2c1: i2c-bus@1 {
+				reg = <1>;
+				clock-frequency = <400000>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+			};
+		};
+
 		gpu: gpu@1c00000 {
 			compatible = "qcom,adreno-505.0", "qcom,adreno";
 			reg = <0x01c00000 0x40000>;
@@ -1761,6 +1881,134 @@
 					};
 				};
 			};
+		};
+
+		adsp: remoteproc@c200000 {
+			compatible = "qcom,msm8953-adsp-pil";
+			reg = <0x0c200000 0x100>;
+
+			interrupts-extended = <&intc GIC_SPI 293 IRQ_TYPE_EDGE_RISING>,
+					      <&adsp_smp2p_in 0 IRQ_TYPE_EDGE_RISING>,
+					      <&adsp_smp2p_in 1 IRQ_TYPE_EDGE_RISING>,
+					      <&adsp_smp2p_in 2 IRQ_TYPE_EDGE_RISING>,
+					      <&adsp_smp2p_in 3 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "wdog", "fatal", "ready",
+					  "handover", "stop-ack";
+
+			clocks = <&rpmcc RPM_SMD_XO_CLK_SRC>;
+			clock-names = "xo";
+
+			power-domains = <&rpmpd RPMPD_VDDCX>;
+			power-domain-names = "cx";
+
+			memory-region = <&adsp_mem>;
+
+			qcom,smem-states = <&adsp_smp2p_out 0>;
+			qcom,smem-state-names = "stop";
+
+			status = "disabled";
+
+			smd-edge {
+				interrupts = <GIC_SPI 289 IRQ_TYPE_EDGE_RISING>;
+
+				label = "lpass";
+				mboxes = <&apcs1 8>;
+				qcom,smd-edge = <1>;
+				qcom,remote-pid = <2>;
+
+				apr: apr {
+					compatible = "qcom,apr-v2";
+					qcom,smd-channels = "apr_audio_svc";
+					qcom,domain = <APR_DOMAIN_ADSP>;
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					q6core: service@3 {
+						compatible = "qcom,q6core";
+						reg = <APR_SVC_ADSP_CORE>;
+					};
+
+					q6afe: service@4 {
+						compatible = "qcom,q6afe";
+						reg = <APR_SVC_AFE>;
+
+						q6afedai: dais {
+							compatible = "qcom,q6afe-dais";
+							#address-cells = <1>;
+							#size-cells = <0>;
+							#sound-dai-cells = <1>;
+						};
+
+						q6afecc: clock-controller {
+							compatible = "qcom,q6afe-clocks";
+							#clock-cells = <2>;
+						};
+					};
+
+					q6asm: service@7 {
+						compatible = "qcom,q6asm";
+						reg = <APR_SVC_ASM>;
+
+						q6asmdai: dais {
+							compatible = "qcom,q6asm-dais";
+							#address-cells = <1>;
+							#size-cells = <0>;
+							#sound-dai-cells = <1>;
+						};
+					};
+
+					q6adm: service@8 {
+						compatible = "qcom,q6adm";
+						reg = <APR_SVC_ADM>;
+
+						q6routing: routing {
+							compatible = "qcom,q6adm-routing";
+							#sound-dai-cells = <0>;
+						};
+					};
+				};
+			};
+		};
+
+		/*
+		 * LPASS audio registers (LPAIF): CPU DAI + DMA for I2S/TDM.
+		 *
+		 * NOT usable yet: both the LPAIF interrupt and the LPASS audio
+		 * clock tree are missing (see the audio bring-up notes).
+		 *
+		 * - The vendor DT never describes the LPAIF interrupt, because the
+		 *   vendor kernel never programs LPAIF from Linux: I2S/AFE is
+		 *   driven by the ADSP firmware. mainline lpass-platform needs the
+		 *   "lpass-irq-lpaif" interrupt (msm8916 uses GIC_SPI 160); the
+		 *   msm8937 number still has to be identified.
+		 * - No mainline clock driver models msm8937's LPASS audio clocks.
+		 *   Vendor names (from the ADSP firmware clock table):
+		 *   audio_core_lpaif_pri_{ibit,ebit,osr}_clk for every MI2S port
+		 *   (pri/sec/ter/quad/qui/sen), audio_core_ixfabric_clk,
+		 *   audio_core_lpaif_{csr,dma}_clk, audio_core_int_i2s0_1_ibit_clk,
+		 *   audio_core_int_i2s2..i2s5_6_ibit_clk, audio_core_int_mclk{0,1}_clk.
+		 *   The apq8016 lpass variant consumes, by name: "ahbix-clk",
+		 *   "pcnoc-mport-clk", "pcnoc-sway-clk", "mi2s-bit-clk0..3" and
+		 *   optional "mi2s-osr-clk0..3".
+		 *
+		 * The reg base is inferred, not measured: the vendor ADSP PIL node
+		 * (/soc/qcom,lpass@c200000) maps 0xc200000 + 0x100, i.e. the LPASS
+		 * block base, and msm8916 keeps LPAIF 0x8000 above its LPASS base
+		 * (0x07700000 -> 0x07708000). 0x0c208000 is that same relation.
+		 * Verify by reading 0x0c201000 vs 0x0c209000 for the I2SCTL reset
+		 * value 0x003c0004 before enabling this node.
+		 *
+		 * The apq8016 register offsets (i2sctl 0x1000, irq 0x6000,
+		 * rdma 0x8400, wrdma 0xb000) are likewise unconfirmed for msm8937.
+		 */
+		lpass: audio-controller@c208000 {
+			compatible = "qcom,apq8016-lpass-cpu";
+			status = "disabled";
+
+			reg = <0x0c208000 0x10000>;
+			reg-names = "lpass-lpaif";
+
+			#sound-dai-cells = <1>;
 		};
 
 		intc: interrupt-controller@b000000 {
