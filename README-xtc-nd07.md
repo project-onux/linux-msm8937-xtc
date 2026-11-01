@@ -18,9 +18,9 @@ Mainline Linux kernel tree for the **XTC Z8A** smartwatch, based on
 | Display | Tianma RM69092, 320×360, DSI command mode |
 | Touch | Zinitix BT541 |
 | Storage | 32 GB eMMC, 3 LUNs |
-| Sensor hub | Broadcom BCM4775 (GNSS + sensors, Samsung SSP protocol) |
+| Sensor hub | Broadcom BCM4775 MCU (GNSS + Samsung SSP transport) with ST sensors behind it |
 | Camera | OV5675 + SC520CS |
-| Audio | WCD9335 codec + AW882xx speaker amp |
+| Audio | On-SoC digital codec + AW88261 over I2S (no WCD9335 fitted) |
 | OS shipped | Android 8.1, kernel 4.9.193 |
 
 Bootloader ids, read back from the running device
@@ -49,7 +49,7 @@ qcom,pmic-id  = <0x2001b 0x0 0x0 0x0>
 | WiFi | 🟡 | WCNSS remoteproc + `wcn36xx`, firmware shipped in the initramfs |
 | Sensor hub | 🟡 | `ssp,bcm4775` on SPI (12 MHz, mode 1), power TLMM 137, standby 47, status 66; the vendor pushes the hub patch from userspace, so no in-kernel upload path exists |
 | Fuel gauge | 🚧 | `qcom,fg-gen3` is decoded (see below) but the driver is still being written |
-| Audio | 🚧 | ADSP remoteproc and the APR/Q6 services are up; mainline already has `wcd9335.c` and the SLIMbus NGD controller, but the LPASS audio clock controller is missing from `gcc-msm8917.c` |
+| Audio | 🚧 | ADSP remoteproc, APR and the Q6 services are described and enabled; the card routes q6asm MultiMedia1 into q6afe quaternary MI2S and the AW88261, which is what the vendor actually runs. There is no WCD9335 on this board and no LPASS audio clock controller in `gcc-msm8917.c`, but neither is needed for this path |
 | Camera | 🚧 | CAMSS extended for msm8937, OV5675 wired with all three supplies; the rear SC520CS has no driver |
 | Display (DRM) | ❌ | currently only the simplefb handover |
 
