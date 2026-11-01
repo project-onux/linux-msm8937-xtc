@@ -328,6 +328,7 @@
 &sdhc_1 {
 	vmmc-supply = <&pm660_l19>;
 	vqmmc-supply = <&pm660_l13>;
+	status = "okay";
 };
 
 /*
