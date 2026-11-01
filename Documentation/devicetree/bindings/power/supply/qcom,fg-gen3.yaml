@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/power/supply/qcom,fg-gen3.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Qualcomm PM660/PM660L fuel gauge
+
+maintainers:
+  - Starry2233 <qu20121118@yeah.net>
+
+description: |
+  The PM660/PM660L fuel gauge reports battery voltage, current,
+  temperature, state of charge and learned capacity over SPMI.
+
+  The fuel gauge node is a container without a "reg" property.  Its
+  register blocks are described by child nodes, which are addressed in
+  the SPMI register space of the PMIC:
+
+    qcom,fg-batt-soc@4000   state of charge registers
+    qcom,fg-batt-info@4100  voltage, current and temperature results
+    qcom,fg-memif@4400      interleaved SRAM access engine
+
+properties:
+  compatible:
+    const: qcom,fg-gen3
+
+  "#address-cells":
+    const: 1
+
+  "#size-cells":
+    const: 0
+
+  qcom,battery-data:
+    $ref: /schemas/types.yaml#/definitions/phandle
+    description:
+      Phandle to the node holding the battery profiles.
+
+patternProperties:
+  "^qcom,fg-(batt-soc|batt-info|memif)@[0-9a-f]+$":
+    type: object
+    additionalProperties: true
+    properties:
+      reg:
+        maxItems: 1
+    required:
+      - reg
+
+required:
+  - compatible
+  - "#address-cells"
+  - "#size-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    pmic {
+      #address-cells = <1>;
+      #size-cells = <0>;
+
+      fuel-gauge {
+        compatible = "qcom,fg-gen3";
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        qcom,fg-batt-soc@4000 {
+          reg = <0x4000>;
+        };
+
+        qcom,fg-batt-info@4100 {
+          reg = <0x4100>;
+        };
+
+        qcom,fg-memif@4400 {
+          reg = <0x4400>;
+        };
+      };
+    };

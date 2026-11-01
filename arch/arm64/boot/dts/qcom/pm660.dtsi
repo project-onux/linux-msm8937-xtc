@@ -197,6 +197,20 @@
 			};
 		};
 
+		/*
+		 * Fuel gauge.  The vendor node is a container with no reg of its
+		 * own: its three children own the blocks at 0x4000 (soc), 0x4100
+		 * (info) and 0x4400 (memif, which is where the SRAM engine lives).
+		 * The mainline driver addresses those absolute offsets directly,
+		 * so list them as reg resources instead of child nodes.
+		 */
+		pm660_fg: fuel-gauge@4000 {
+			compatible = "qcom,fg-gen3";
+			reg = <0x4000>, <0x4100>, <0x4400>;
+
+			status = "disabled";
+		};
+
 		pm660_rradc: adc@4500 {
 			compatible = "qcom,pm660-rradc";
 			reg = <0x4500>;

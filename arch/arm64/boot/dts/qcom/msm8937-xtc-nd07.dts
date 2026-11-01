@@ -16,6 +16,7 @@
 /dts-v1/;
 
 #include <dt-bindings/clock/qcom,gcc-msm8917.h>
+#include <dt-bindings/clock/qcom,rpmcc.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/input/input.h>
@@ -692,5 +693,235 @@ cam_avdd_2v8: cam-avdd-reg {
 };
 
 &adsp_mem {
+	status = "okay";
+};
+
+/*
+ * Audio codec: WCD9335 ("tasha") on SLIMbus.
+ *
+ * The vendor only describes this codec in its shared msm8937 base dtsi, as
+ * /soc/slim@c140000/tasha_codec, and leaves *every* node involved "disabled"
+ * on this product (tasha_codec, slim@c140000, wcd9xxx-irq and the
+ * sound-9335 card). No node with a mainline-suitable compatible exists
+ * anywhere in the vendor tree, so the codec is written out here from the
+ * values that node carries:
+ *
+ *   compatible                    = "qcom,tasha-slim-pgd"
+ *                                   (downstream-only; mainline matches the
+ *                                   SLIMbus enumeration address slim217,1a0)
+ *   elemental-addr                = <0x00 0x01 0xa0 0x01 0x17 0x02>
+ *                                   -> EA 0x01a0, device index 0x01, LA 0x17
+ *   qcom,cdc-mclk-clk-rate        = <0x00927c00> = 9,600,000 Hz
+ *   qcom,cdc-dmic-sample-rate     = <0x00249f00> = 2,400,000 Hz
+ *   qcom,cdc-micbias{1,2,3,4}-mv  = <0x708>      = 1800 mV each
+ *   qcom,cdc-static-supplies      = "cdc-vdd-buck", "cdc-buck-sido",
+ *                                   "cdc-vdd-tx-h", "cdc-vdd-rx-h",
+ *                                   "cdc-vdd-px"
+ *   qcom,cdc-on-demand-supplies   = "cdc-vdd-mic-bias"
+ *   qcom,cdc-vdd-buck-voltage     = <1800000 1800000>
+ *   qcom,cdc-vdd-buck-current     = <650000>       (0x0009eb10 uA)
+ *   qcom,cdc-buck-sido-voltage    = <1800000 1800000>
+ *   qcom,cdc-buck-sido-current    = <150000>       (0x000249f0 uA)
+ *   qcom,cdc-vdd-tx-h-voltage     = <1800000 1800000>
+ *   qcom,cdc-vdd-tx-h-current     = <25000>        (0x000061a8 uA)
+ *   qcom,cdc-vdd-rx-h-voltage     = <1800000 1800000>
+ *   qcom,cdc-vdd-rx-h-current     = <25000>        (0x000061a8 uA)
+ *   qcom,cdc-vdd-px-voltage       = <1800000 1800000>
+ *   qcom,cdc-vdd-px-current       = <10000>        (0x00002710 uA)
+ *   qcom,cdc-vdd-mic-bias-voltage = <3078072 3078072> (implausible as a rail;
+ *                                   the codec generates micbias internally)
+ *   qcom,cdc-vdd-mic-bias-current = <15000>        (0x00003a98 uA)
+ *
+ * The codec's two GPIOs are not properties of that node - they hang off
+ * helper nodes, and both were resolved through their pinctrl states:
+ *
+ *   reset: /soc/msm_cdc_pinctrl, compatible "qcom,msm-cdc-pinctrl",
+ *          pinctrl-names "aud_active"/"aud_sleep", is what the codec's
+ *          qcom,wcd-rst-gpio-node phandle points at. Its aud_active state is
+ *          &cdc_reset_ctrl/cdc_reset_active: pins = "gpio68", function = "gpio",
+ *          drive-strength = 16 mA, bias-pull-down, output-high.
+ *   irq:   /soc/wcd9xxx-irq, compatible "qcom,wcd9xxx-irq", carries
+ *          qcom,gpio-connect = <&tlmm 0x49 0> -> GPIO 73, and pinctrl-0
+ *          &wcd9xxx_intr/wcd_intr_default: pins = "gpio73", function = "gpio",
+ *          drive-strength = 2 mA, bias-pull-down, input-enable. That node is
+ *          an interrupt-controller with #interrupt-cells = <1> and fans 31
+ *          codec interrupt sources (<0 1 2 ... 30>) out over that one line;
+ *          mainline uses a single regmap IRQ chip on "intr1" instead, so only
+ *          that line is described below.
+ *
+ * IMPORTANT - pin ownership on ND07 does not match the vendor base dtsi:
+ * GPIO 68 and GPIO 73 are already used by the AW88261 speaker amplifier
+ * described earlier in this file (&blsp1_i2c2, speaker-amp@34:
+ * reset-gpio = <&tlmm 68 ...>, irq-gpio = <&tlmm 73 ...>). The running device
+ * confirms the vendor never enables the tasha path: /proc/asound/cards shows
+ * only "sdm429-qrd-snd-card-AW", /proc/interrupts has no slim/wcd line,
+ * /sys/bus/slimbus/devices is empty, and the active card's qcom,audio-routing
+ * is CDC_CONN->MCLK / TX_I2S_CLK->DIGITAL_REGULATOR / DMIC1..2->Digital Mic,
+ * i.e. msm_dig_codec plus the AW88261 over QUATERNARY MI2S (aw-rx-port-id =
+ * <0x1006>), not a WCD9335. The node below is nevertheless left enabled so the
+ * driver actually probes and the bring-up log shows where it stops; nothing in
+ * mainline claims GPIO 68/73 today (&blsp1_i2c2/speaker-amp@34 needs an
+ * out-of-tree driver), so there is no real conflict yet. If that amp driver is
+ * ever added, exactly one of the two nodes has to stay disabled, and a
+ * schematic has to say which part really owns those two pins.
+ */
+/ {
+	/*
+	 * Codec rails. These voltages are the vendor's requested settings, not
+	 * board rail names: VDD_BUCK, VDD_BUCK_SIDO, VDD_TX_H, VDD_RX_H and
+	 * VDD_PX are produced by the codec's own bucks/LDOs from VBAT and the
+	 * vendor only uses the properties to pick voltage/bypass levels, so
+	 * there is no regulator node on the board to point at. They are modelled
+	 * as 1.8 V fixed regulators purely so that
+	 * devm_regulator_bulk_get_enable() in wcd9335_parse_dt() succeeds.
+	 * vdd-io has no vendor property at all: 1.8 V there is ASSUMED and
+	 * untraced. vdd-micbias is deliberately not modelled - the vendor value
+	 * (3,078,072 uV) is not a plausible supply voltage.
+	 */
+	codec_vdd_buck: regulator-codec-vdd-buck {
+		compatible = "regulator-fixed";
+		regulator-name = "codec_vdd_buck";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	codec_vdd_buck_sido: regulator-codec-vdd-buck-sido {
+		compatible = "regulator-fixed";
+		regulator-name = "codec_vdd_buck_sido";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	codec_vdd_tx: regulator-codec-vdd-tx {
+		compatible = "regulator-fixed";
+		regulator-name = "codec_vdd_tx";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	codec_vdd_rx: regulator-codec-vdd-rx {
+		compatible = "regulator-fixed";
+		regulator-name = "codec_vdd_rx";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	codec_vdd_io: regulator-codec-vdd-io {
+		compatible = "regulator-fixed";
+		regulator-name = "codec_vdd_io";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+	};
+
+	/*
+	 * Codec MCLK. The vendor feeds it from /soc/audio_ext_clk
+	 * ("qcom,audio-ref-clk", parented to an RPM clock) at the rate above.
+	 * No mainline driver models that reference-clock divider on msm8937, so
+	 * this is a fixed-clock: the rate can be read (wcd->mclk_rate is used to
+	 * pick the DMIC divider), but it cannot be gated or retuned.
+	 */
+	codec_mclk: clock-codec-mclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <9600000>;
+	};
+};
+
+&slim_ngd {
+	/*
+	 * Enabled so the NGD controller + BAM path actually probes; the codec
+	 * itself stays disabled above, so this comes up as an empty bus. The
+	 * vendor keeps SLIMbus off entirely because the ADSP firmware owns it.
+	 */
+	status = "okay";
+
+	/*
+	 * One NGD instance. The vendor node has cell-index = <1>, and
+	 * qcom-ngd-ctrl computes the instance base as
+	 * base + id * 0x1000 + (id - 1) * 0x1000, so id 1 lands on 0xc141000.
+	 * Children are SLIMbus slaves addressed by (device index, instance);
+	 * the manufacturer/product code comes from the compatible string.
+	 */
+	slim@1 {
+		reg = <1>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		/*
+		 * SLIM interface device the codec driver talks to for its
+		 * enumeration/logical-address handshake (slim-ifc-dev). Same
+		 * compatible as the codec; it is not a second codec.
+		 */
+		tasha_ifd: tas-ifd@0,0 {
+			compatible = "slim217,1a0";
+			reg = <0 0>;
+		};
+
+		wcd9335: codec@1,0 {
+			compatible = "slim217,1a0";
+			reg = <1 0>;
+
+			clock-names = "mclk", "slimbus";
+			clocks = <&codec_mclk>,
+				 <&rpmcc RPM_SMD_BB_CLK1>;
+
+			interrupt-parent = <&tlmm>;
+			interrupts = <73 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "intr1";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&wcd_reset_default &wcd_intr_default>;
+
+			reset-gpios = <&tlmm 68 GPIO_ACTIVE_LOW>;
+			slim-ifc-dev = <&tasha_ifd>;
+
+			#sound-dai-cells = <1>;
+
+			vdd-buck-supply = <&codec_vdd_buck>;
+			vdd-buck-sido-supply = <&codec_vdd_buck_sido>;
+			vdd-io-supply = <&codec_vdd_io>;
+			vdd-rx-supply = <&codec_vdd_rx>;
+			vdd-tx-supply = <&codec_vdd_tx>;
+
+			status = "okay";
+		};
+	};
+};
+
+&slimbam {
+	status = "okay";
+};
+
+&tlmm {
+	/*
+	 * Codec pins, copied from the vendor states
+	 * cdc_reset_ctrl/cdc_reset_active (GPIO 68, 16 mA, pull-down) and
+	 * wcd9xxx_intr/wcd_intr_default (GPIO 73, 2 mA, pull-down, input).
+	 * The vendor's output-high is left out: mainline drives the reset line
+	 * through reset-gpios, so the direction belongs to the GPIO driver.
+	 */
+	wcd_reset_default: wcd-reset-default-state {
+		pins = "gpio68";
+		function = "gpio";
+		drive-strength = <16>;
+		bias-pull-down;
+	};
+
+	wcd_intr_default: wcd-intr-default-state {
+		pins = "gpio73";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+};
+
+/*
+ * The gauge is the only source of pack voltage and capacity on this board:
+ * the RRADC only measures the USB input side and the VADC exposes no vbat
+ * channel, so this has to be enabled for anything to report a battery level.
+ */
+&pm660_fg {
 	status = "okay";
 };
