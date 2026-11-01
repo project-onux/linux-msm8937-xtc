@@ -297,6 +297,13 @@
 
 &tlmm {
 
+	hub_default: hub-default-state {
+		pins = "gpio47", "gpio66", "gpio137";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+	};
+
 	cam_avdd_default: cam-avdd-default-state {
 		pins = "gpio33";
 		function = "gpio";
@@ -425,10 +432,29 @@
 &blsp2_spi2 {
 	status = "okay";
 
+	/*
+	 * Values read from the vendor node, which spells the cells out:
+	 *   gps,power_enable = <&tlmm 0x89 0>  -> GPIO 137
+	 *   gps-nstandby     = <&tlmm 0x2f 0>  -> GPIO 47
+	 *   ap-status        = <&tlmm 0x42 0>  -> GPIO 66
+	 *   spi-max-frequency = 0x00b71b00     -> 12 MHz
+	 * plus spi-cpha, i.e. SPI mode 1.  The vendor calls the host side of
+	 * this link "ttyBCM-SPI" (main-host-name), which is the same ttyBCM
+	 * that shows up as an msmgpio interrupt on the stock kernel.
+	 */
 	sensorhub@0 {
 		compatible = "ssp,bcm4775";
 		reg = <0>;
-		spi-max-frequency = <1817344>;
+
+		spi-max-frequency = <12000000>;
+		spi-cpha;
+
+		power-gpios = <&tlmm 137 GPIO_ACTIVE_HIGH>;
+		standby-gpios = <&tlmm 47 GPIO_ACTIVE_LOW>;
+		status-gpios = <&tlmm 66 GPIO_ACTIVE_HIGH>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&hub_default>;
 	};
 };
 

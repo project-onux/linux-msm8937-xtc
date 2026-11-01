@@ -458,6 +458,7 @@ MODULE_DEVICE_TABLE(of, ssp_of_match);
 static struct ssp_data *ssp_parse_dt(struct device *dev)
 {
 	struct ssp_data *data;
+	struct gpio_desc *gpiod;
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -474,6 +475,28 @@ static struct ssp_data *ssp_parse_dt(struct device *dev)
 	data->mcu_reset_gpiod = devm_gpiod_get_optional(dev, "mcu-reset",
 					       GPIOD_OUT_HIGH);
 	if (IS_ERR(data->mcu_reset_gpiod))
+		return NULL;
+
+	/*
+	 * The BCM4775 on this board is a separate chip with its own rails and
+	 * a standby line, unlike the Samsung hubs this framework was written
+	 * for.  The vendor node spells them out as power_enable (TLMM 137),
+	 * nstandby (TLMM 47, active low) and ap-status (TLMM 66).  Power the
+	 * part up and release standby here; the status line is taken so that
+	 * pinctrl owns it, but the handshake itself is optional.
+	 */
+	gpiod = devm_gpiod_get_optional(dev, "power", GPIOD_OUT_HIGH);
+	if (IS_ERR(gpiod))
+		return NULL;
+	if (gpiod)
+		msleep(50);	/* let the hub finish its power-on reset */
+
+	gpiod = devm_gpiod_get_optional(dev, "standby", GPIOD_OUT_HIGH);
+	if (IS_ERR(gpiod))
+		return NULL;
+
+	gpiod = devm_gpiod_get_optional(dev, "status", GPIOD_IN);
+	if (IS_ERR(gpiod))
 		return NULL;
 
 	data->sensorhub_info = device_get_match_data(dev);
