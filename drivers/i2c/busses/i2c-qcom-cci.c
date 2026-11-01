@@ -705,6 +705,44 @@ static const struct cci_data cci_v1_data = {
 	},
 };
 
+/*
+ * msm8937 has two CCI masters; everything else is the same as CCI v1.  The
+ * watch puts its front sensor on master 1, so cci_v1_data (one master) is not
+ * enough here.
+ */
+static const struct cci_data cci_msm8937_data = {
+	.num_masters = 2,
+	.queue_size = { 64, 16 },
+	.quirks = {
+		.max_write_len = 10,
+		.max_read_len = 12,
+	},
+	.params[I2C_MODE_STANDARD] = {
+		.thigh = 78,
+		.tlow = 114,
+		.tsu_sto = 28,
+		.tsu_sta = 28,
+		.thd_dat = 10,
+		.thd_sta = 77,
+		.tbuf = 118,
+		.scl_stretch_en = 0,
+		.trdhld = 6,
+		.tsp = 1
+	},
+	.params[I2C_MODE_FAST] = {
+		.thigh = 20,
+		.tlow = 28,
+		.tsu_sto = 21,
+		.tsu_sta = 21,
+		.thd_dat = 13,
+		.thd_sta = 18,
+		.tbuf = 32,
+		.scl_stretch_en = 0,
+		.trdhld = 6,
+		.tsp = 3
+	},
+};
+
 static const struct cci_data cci_v1_5_data = {
 	.num_masters = 2,
 	.queue_size = { 64, 16 },
@@ -830,6 +868,7 @@ static const struct cci_data cci_msm8953_data = {
 
 static const struct of_device_id cci_dt_match[] = {
 	{ .compatible = "qcom,msm8226-cci", .data = &cci_v1_data},
+	{ .compatible = "qcom,msm8937-cci", .data = &cci_msm8937_data},
 	{ .compatible = "qcom,msm8953-cci", .data = &cci_msm8953_data},
 	{ .compatible = "qcom,msm8974-cci", .data = &cci_v1_5_data},
 	{ .compatible = "qcom,msm8996-cci", .data = &cci_v2_data},

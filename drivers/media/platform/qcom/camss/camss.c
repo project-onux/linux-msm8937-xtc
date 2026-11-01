@@ -4981,6 +4981,7 @@ static int camss_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	if (camss->res->version == CAMSS_8x16 ||
+	    camss->res->version == CAMSS_8x37 ||
 	    camss->res->version == CAMSS_8x39 ||
 	    camss->res->version == CAMSS_8x53 ||
 	    camss->res->version == CAMSS_8x96) {
@@ -5104,6 +5105,30 @@ static void camss_remove(struct platform_device *pdev)
 
 static const struct camss_resources msm8916_resources = {
 	.version = CAMSS_8x16,
+	.csiphy_res = csiphy_res_8x16,
+	.csid_res = csid_res_8x16,
+	.ispif_res = &ispif_res_8x16,
+	.vfe_res = vfe_res_8x16,
+	.csiphy_num = ARRAY_SIZE(csiphy_res_8x16),
+	.csid_num = ARRAY_SIZE(csid_res_8x16),
+	.vfe_num = ARRAY_SIZE(vfe_res_8x16),
+};
+
+/*
+ * msm8937 / SDM429W.  The camera sub-device IP revisions are the same as on
+ * msm8916 (CSIPHY 2ph-1-0, CSID 4.1, VFE 4.1, ISPIF 3.0), so the 8x16
+ * sub-device resources are reused as-is.  Everything that actually differs is
+ * described in the device tree: CSID and ISPIF live in the 0x1b30000 block
+ * (msm8916 has them at 0x1b08000/0x1b0a000), the CSIPHY clock muxes are at
+ * 0x1b00030/0x1b00038, the CSI clock mux at 0x1b00020, and the clock tree is a
+ * different one.
+ *
+ * Only the two CSIPHY/CSID instances that can be reached from the two sensors
+ * are described; the SoC has a third CSID and a second VFE, which the driver
+ * has no use for here (msm8916's tables are two CSID + one VFE as well).
+ */
+static const struct camss_resources msm8937_resources = {
+	.version = CAMSS_8x37,
 	.csiphy_res = csiphy_res_8x16,
 	.csid_res = csid_res_8x16,
 	.ispif_res = &ispif_res_8x16,
@@ -5317,6 +5342,7 @@ static const struct camss_resources x1e80100_resources = {
 
 static const struct of_device_id camss_dt_match[] = {
 	{ .compatible = "qcom,msm8916-camss", .data = &msm8916_resources },
+	{ .compatible = "qcom,msm8937-camss", .data = &msm8937_resources },
 	{ .compatible = "qcom,msm8939-camss", .data = &msm8939_resources },
 	{ .compatible = "qcom,msm8953-camss", .data = &msm8953_resources },
 	{ .compatible = "qcom,msm8996-camss", .data = &msm8996_resources },
