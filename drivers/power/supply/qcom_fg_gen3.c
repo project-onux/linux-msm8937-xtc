@@ -38,7 +38,8 @@
 #include <linux/of.h>
 #include <linux/power_supply.h>
 #include <linux/regmap.h>
-#include <linux/spmi.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
 #include <linux/types.h>
 #include <linux/unaligned.h>
 
@@ -66,7 +67,9 @@
 
 /* fg-memif IACS control (0x4450) */
 #define FG_IACS_BUSY			BIT(7)
-#define FG_IACS_REQ			GENMASK(7, 5)
+/* Own/release the SRAM engine: bits 7 and 5 together, i.e. 0xa0.  Bit 6 is the
+ * write/burst selector in the mode register and must stay clear here. */
+#define FG_IACS_REQ			(BIT(7) | BIT(5))
 
 /* fg-memif IACS mode (0x4451) */
 #define FG_IACS_MODE_MASK		GENMASK(7, 6)
@@ -166,12 +169,6 @@ struct fg_gen3_chip {
 	struct mutex sram_lock;	/* serialises the SRAM access engine */
 	struct power_supply *psy;
 	struct power_supply_desc desc;
-};
-
-static const struct regmap_config fg_gen3_regmap_config = {
-	.reg_bits	= 16,
-	.val_bits	= 8,
-	.max_register	= 0xffff,
 };
 
 static int fg_gen3_memif_poll(struct fg_gen3_chip *chip, u16 reg, u8 bit,
@@ -478,11 +475,11 @@ static enum power_supply_property fg_gen3_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 };
 
-static int fg_gen3_probe(struct spmi_device *sdev)
+static int fg_gen3_probe(struct platform_device *pdev)
 {
 	struct power_supply_config psy_cfg = {};
 	struct fg_gen3_chip *chip;
-	struct device *dev = &sdev->dev;
+	struct device *dev = &pdev->dev;
 	unsigned int val;
 	int ret;
 
@@ -493,11 +490,14 @@ static int fg_gen3_probe(struct spmi_device *sdev)
 	chip->dev = dev;
 	mutex_init(&chip->sram_lock);
 
-	chip->regmap = devm_regmap_init_spmi_ext(sdev,
-						 &fg_gen3_regmap_config);
-	if (IS_ERR(chip->regmap))
-		return dev_err_probe(dev, PTR_ERR(chip->regmap),
-				     "failed to initialise regmap\n");
+	/*
+	 * The PMIC container creates us as a platform device, so take the
+	 * regmap of the SPMI bus underneath it.
+	 */
+	chip->regmap = dev_get_regmap(dev->parent, NULL);
+	if (!chip->regmap)
+		return dev_err_probe(dev, -ENODEV,
+				     "no regmap on the parent device\n");
 
 	/* Fail early instead of at the first property read. */
 	ret = regmap_read(chip->regmap,
@@ -519,7 +519,7 @@ static int fg_gen3_probe(struct spmi_device *sdev)
 		return dev_err_probe(dev, PTR_ERR(chip->psy),
 				     "failed to register power supply\n");
 
-	spmi_device_set_drvdata(sdev, chip);
+	platform_set_drvdata(pdev, chip);
 
 	return 0;
 }
@@ -530,14 +530,14 @@ static const struct of_device_id fg_gen3_match_table[] = {
 };
 MODULE_DEVICE_TABLE(of, fg_gen3_match_table);
 
-static struct spmi_driver fg_gen3_driver = {
+static struct platform_driver fg_gen3_driver = {
 	.driver = {
 		.name		= "qcom-fg-gen3",
 		.of_match_table	= fg_gen3_match_table,
 	},
 	.probe	= fg_gen3_probe,
 };
-module_spmi_driver(fg_gen3_driver);
+module_platform_driver(fg_gen3_driver);
 
 MODULE_DESCRIPTION("Qualcomm PM660 (qpnp-fg-gen3) fuel gauge");
 MODULE_LICENSE("GPL");

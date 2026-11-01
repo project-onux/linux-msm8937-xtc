@@ -512,8 +512,8 @@
 
 		#sound-dai-cells = <0>;
 
-		reset-gpio = <&tlmm 68 GPIO_ACTIVE_LOW>;
-		irq-gpio = <&tlmm 73 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&tlmm 68 GPIO_ACTIVE_LOW>;
+		irq-gpios = <&tlmm 73 GPIO_ACTIVE_HIGH>;
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&aw_pa_default>;
@@ -693,6 +693,15 @@ cam_avdd_2v8: cam-avdd-reg {
  * carveout is used as-is and no hard pinning is needed.
  */
 &adsp {
+	/*
+	 * The pas descriptor for "qcom,msm8953-adsp-pil" attaches the "cx"
+	 * proxy power domain; without it qcom_pas_pds_attach() fails with
+	 * -ENODATA and the remoteproc never probes, which would take APR, the
+	 * Q6 services and the sound card down with it.
+	 */
+	power-domains = <&rpmpd RPMPD_VDDCX>;
+	power-domain-names = "cx";
+
 	status = "okay";
 };
 

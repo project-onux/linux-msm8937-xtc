@@ -52,6 +52,7 @@ static const struct ssp_sensorhub_info ssp_bcm4775_info = {
 	.fw_name = "ssp_bcm4775.fw",
 	.fw_crashed_name = "ssp_crashed.fw",
 	.fw_rev = 0,
+	.no_fw_check = true,
 	.mag_table = ssp_magnitude_table,
 	.mag_length = ARRAY_SIZE(ssp_magnitude_table),
 };
@@ -129,6 +130,19 @@ static void ssp_enable_mcu(struct ssp_data *data, bool enable)
 static int ssp_check_fwbl(struct ssp_data *data)
 {
 	int retries = 0;
+
+	/*
+	 * The BCM4775 runs its firmware out of its own flash, so there is
+	 * nothing to upload and its revision will never equal fw_rev (which
+	 * would have to be 0, and 0 is rejected as an invalid revision below).
+	 * Accept whatever it reports instead of failing probe with -EPERM.
+	 */
+	if (data->sensorhub_info->no_fw_check) {
+		data->cur_firm_rev = ssp_get_firmware_rev(data);
+		dev_info(&data->spi->dev, "MCU Firm Rev : %8u (no check)\n",
+			 data->cur_firm_rev);
+		return SSP_FW_DL_STATE_NONE;
+	}
 
 	while (retries++ < 5) {
 		data->cur_firm_rev = ssp_get_firmware_rev(data);

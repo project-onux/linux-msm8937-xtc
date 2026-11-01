@@ -124,6 +124,9 @@ struct ssp_sensorhub_info {
 	char *fw_name;
 	char *fw_crashed_name;
 	unsigned int fw_rev;
+	/* Some hubs (BCM4775) keep their firmware in flash, so there is no
+	 * download step and no revision we could match against. */
+	bool no_fw_check;
 	const u8 * const mag_table;
 	const unsigned int mag_length;
 };

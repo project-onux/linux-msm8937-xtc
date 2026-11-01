@@ -222,9 +222,12 @@
 		};
 
 		adsp_mem: adsp {
-			size = <0x0 0x1100000>;
-			alignment = <0x0 0x100000>;
-			alloc-ranges = <0x0 0x86800000 0x0 0x8000000>;
+			/*
+			 * Pinned to the vendor reservation: the ADSP firmware is
+			 * built against this base and needs the full 23 MB, which
+			 * is 6 MB more than the generic carveout used to give it.
+			 */
+			reg = <0x0 0x8b400000 0x0 0x1700000>;
 			no-map;
 			status = "disabled";
 		};
@@ -801,13 +804,6 @@
 
 			blsp2_spi2_default: blsp2-spi2-default-state {
 				cs0-pins {
-					pins = "gpio47";
-					function = "blsp_spi6";
-					drive-strength = <16>;
-					bias-disable;
-				};
-
-				cs1-pins {
 					pins = "gpio22";
 					function = "blsp_spi6";
 					drive-strength = <16>;
@@ -824,7 +820,7 @@
 
 			blsp2_spi2_sleep: blsp2-spi2-sleep-state {
 				cs0-pins {
-					pins = "gpio47";
+					pins = "gpio22";
 					function = "gpio";
 					drive-strength = <2>;
 					bias-disable;

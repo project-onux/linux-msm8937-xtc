@@ -205,9 +205,13 @@ static int aw882xx_check_sysst(struct aw882xx *aw, unsigned int want)
  * board the efuse reads icalk = +30, vcalk = -13, which yields 0x2164 - the
  * exact value the running vendor driver leaves in 0x50.
  */
+/*
+ * Each calibration value is a 10-bit signed field split across an "H" and an
+ * "L" register: the high byte carries bits 9..4 and the low byte bits 3..0.
+ */
 static s16 aw882xx_efuse_field(u16 hi, u16 lo)
 {
-	u16 val = (hi & AW882XX_EF_ICALK_MASK) & (lo & AW882XX_EF_ICALK_MASK);
+	u16 val = ((hi << 4) | (lo & 0xf)) & AW882XX_EF_ICALK_MASK;
 
 	if (val & AW882XX_EF_ICALK_SIGN)
 		val |= AW882XX_EF_FIELD_SIGN_EXT;
