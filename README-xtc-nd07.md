@@ -38,19 +38,61 @@ qcom,pmic-id  = <0x2001b 0x0 0x0 0x0>
 |---|---|---|
 | UART console | ✅ | `blsp1_uart2` |
 | Framebuffer / fbcon | ✅ | via lk2nd `simple-framebuffer` handover |
-| PM660 regulators | ✅ | 9 rails, RPM managed |
+| USB gadget console | 🟡 | ChipIdea HDRC + 28nm femto PHY, peripheral mode; CDC-ACM shell on `/dev/ttyGS0` plus an NCM port at 192.168.42.1 |
+| PM660 regulators | ✅ | 10 rails, RPM managed |
 | Power key | ✅ | `pm8941-pwrkey` via `pm660.dtsi` |
 | eMMC | ✅ | `sdhci-msm`, vmmc l19 / vqmmc l13 |
 | Vibrator | ✅ | `gpio-vibra`, TLMM gpio 129 |
 | NFC | ✅ | `nxp-nci-i2c`, irq 17 / ven 16 / firmware 130 |
 | Touch | ✅ | `zinitix,bt541`, irq 65 / reset 64 |
-| WiFi | 🟡 | WCNSS remoteproc + `wcn36xx`; firmware and the `vddpa` rail still need verification |
-| Charger | 🚧 | PM660 SMB2; mainline has no driver for this generation |
-| Fuel gauge | ❌ | `qpnp,fg` |
-| Sensor hub | 🚧 | SSP framework extended for `ssp,bcm4775`; firmware upload path missing |
-| Audio | ❌ | needs the LPASS stack plus WCD9335 and AW882xx drivers |
-| Camera | ❌ | CAMSS for msm8937, plus SC520CS |
+| Charger | 🟡 | mainline `qcom_smbx` already matches `qcom,pm660-charger`; RRADC supplies the voltage/current channels |
+| WiFi | 🟡 | WCNSS remoteproc + `wcn36xx`, firmware shipped in the initramfs |
+| Sensor hub | 🟡 | `ssp,bcm4775` on SPI (12 MHz, mode 1), power TLMM 137, standby 47, status 66; the vendor pushes the hub patch from userspace, so no in-kernel upload path exists |
+| Fuel gauge | 🚧 | `qcom,fg-gen3` is decoded (see below) but the driver is still being written |
+| Audio | 🚧 | ADSP remoteproc and the APR/Q6 services are up; mainline already has `wcd9335.c` and the SLIMbus NGD controller, but the LPASS audio clock controller is missing from `gcc-msm8917.c` |
+| Camera | 🚧 | CAMSS extended for msm8937, OV5675 wired with all three supplies; the rear SC520CS has no driver |
 | Display (DRM) | ❌ | currently only the simplefb handover |
+
+## Reverse-engineered details
+
+The stock 4.9.193 kernel image (`D:/Z8A_V1.6.7/data/kernel`) is a raw ARM32
+Image where `vaddr = 0xc0008000 + file offset`, which makes it possible to
+recover register maps from it.  Two results worth recording:
+
+**PM660 SMB2 charger.** The `smb_chg_param` table at `0xc0f7f728` gives
+fast-charge current `0x1061` with 25 mA steps, float voltage `0x1070` at
+`3487500 + 7500 * raw`, and USB input current limit `0x1370` with 25 mA
+steps.  A live register dump confirms it: `0x1070 == 0x80 == 128`, and
+`3487500 + 128 * 7500 == 4447500 uV` against a device tree value of
+4450000 uV.
+
+**FG-gen3 fuel gauge.** The SRAM parameter table lives at `0xc1618970`,
+entries are 36 bytes (`u16 word`, `u8 bitoff`, `u8 nbytes`, `u32 cache`,
+`u32 denominator`, `u64 multiplier`, `char *name`, `u32 max`), and decoding
+is `value = raw * multiplier / denominator`.  Battery voltage is the upper
+16 bits of SRAM word `0x61` scaled by `244141/1000`: a raw value of 15600
+gives 3808600 uV, while the running device reported 3811025 uV.
+
+## Sensor inventory
+
+The physical sensors are ST parts behind the hub MCU, not Broadcom:
+
+`LSM6DS3(H)` accelerometer, gyroscope and step counter, plus heart rate,
+temperature, SpO2, wear status, PPG, motion state, hand wakeup,
+start/stop, calorie, exercise duration, motion notify and high CBT notify
+(the vendor types start at `88620000`).  26 sensors in total.
+
+## Booting without flashing
+
+Two images are needed, because `aboot` does not merge a dtbo overlay for a
+hand-built image, so the base DTB has to be carried by lk2nd:
+
+```
+fastboot boot lk2nd-xtc.img      # 32-bit aboot -> lk2nd -> AArch64
+fastboot boot alpine-xtc.img     # kernel + initramfs + DTB
+```
+
+Nothing is written to flash; a power cycle always returns to Android.
 
 ## Building
 
