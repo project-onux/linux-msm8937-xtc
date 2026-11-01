@@ -155,6 +155,10 @@ static int ssp_check_lines(struct ssp_data *data, bool state)
 {
 	int delay_cnt = 0;
 
+	/* The BCM4775 variant wires no ap-mcu/mcu-ap handshake lines. */
+	if (!data->ap_mcu_gpiod || !data->mcu_ap_gpiod)
+		return 0;
+
 	gpiod_set_value_cansleep(data->ap_mcu_gpiod, state);
 
 	while (gpiod_get_value_cansleep(data->mcu_ap_gpiod) != state) {

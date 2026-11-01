@@ -42,6 +42,20 @@ static const struct ssp_sensorhub_info ssp_rinato_info = {
 	.mag_length = ARRAY_SIZE(ssp_magnitude_table),
 };
 
+/*
+ * Broadcom BCM4775 (GNSS + sensor combo) as found on the XTC Z8A.
+ * The vendor stack does not load a firmware file: userspace feeds it
+ * through /dev/bbd_patch, so fw_name here is a placeholder until the
+ * upload path is reimplemented.
+ */
+static const struct ssp_sensorhub_info ssp_bcm4775_info = {
+	.fw_name = "ssp_bcm4775.fw",
+	.fw_crashed_name = "ssp_crashed.fw",
+	.fw_rev = 0,
+	.mag_table = ssp_magnitude_table,
+	.mag_length = ARRAY_SIZE(ssp_magnitude_table),
+};
+
 static const struct ssp_sensorhub_info ssp_thermostat_info = {
 	.fw_name = "thermostat_B2.fw",
 	.fw_crashed_name = "ssp_crashed.fw",
@@ -433,6 +447,9 @@ static const struct of_device_id ssp_of_match[] = {
 	}, {
 		.compatible	= "samsung,sensorhub-thermostat",
 		.data		= &ssp_thermostat_info,
+	}, {
+		.compatible	= "ssp,bcm4775",
+		.data		= &ssp_bcm4775_info,
 	},
 	{ }
 };
@@ -446,15 +463,15 @@ static struct ssp_data *ssp_parse_dt(struct device *dev)
 	if (!data)
 		return NULL;
 
-	data->mcu_ap_gpiod = devm_gpiod_get(dev, "mcu-ap", GPIOD_IN);
+	data->mcu_ap_gpiod = devm_gpiod_get_optional(dev, "mcu-ap", GPIOD_IN);
 	if (IS_ERR(data->mcu_ap_gpiod))
 		return NULL;
 
-	data->ap_mcu_gpiod = devm_gpiod_get(dev, "ap-mcu", GPIOD_OUT_HIGH);
+	data->ap_mcu_gpiod = devm_gpiod_get_optional(dev, "ap-mcu", GPIOD_OUT_HIGH);
 	if (IS_ERR(data->ap_mcu_gpiod))
 		return NULL;
 
-	data->mcu_reset_gpiod = devm_gpiod_get(dev, "mcu-reset",
+	data->mcu_reset_gpiod = devm_gpiod_get_optional(dev, "mcu-reset",
 					       GPIOD_OUT_HIGH);
 	if (IS_ERR(data->mcu_reset_gpiod))
 		return NULL;
