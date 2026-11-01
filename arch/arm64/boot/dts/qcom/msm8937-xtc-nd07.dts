@@ -140,7 +140,6 @@
 &rpm_requests {
 	regulators-0 {
 		compatible = "qcom,rpm-pm660-regulators";
-
 		/*
 		 * LDO/SMPS input rails. The true parents are PM660L / BOB outputs
 		 * that are invisible to us, so tie them to the battery rail. This
@@ -152,6 +151,15 @@
 		vdd_l5-supply = <&vph_pwr>;
 		vdd_l8_l9_l10_l11_l12_l13_l14-supply = <&vph_pwr>;
 		vdd_l15_l16_l17_l18_l19-supply = <&vph_pwr>;
+
+		/*
+		 * Camera core rail: vendor camera@1 cam_vdig is 1.225 V and
+		 * its phandle resolves to PM660 LDO3.
+		 */
+		pm660_l3: l3 {
+			regulator-min-microvolt = <1225000>;
+			regulator-max-microvolt = <1225000>;
+		};
 
 		/* WCNSS iris vddrfa. Stock runs 1.15 V; iris may ask for 1.30 V. */
 		pm660_l5: l5 {
@@ -288,6 +296,14 @@
 };
 
 &tlmm {
+
+	cam_avdd_default: cam-avdd-default-state {
+		pins = "gpio33";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-high;
+	};
 	vibrator_default: vibrator-default-state {
 		pins = "gpio129";
 		function = "gpio";
@@ -545,6 +561,9 @@
 		reg = <0x36>;
 
 		reset-gpios = <&tlmm 38 GPIO_ACTIVE_LOW>;
+		avdd-supply = <&cam_avdd_2v8>;
+		dovdd-supply = <&cam_vio_1v8>;
+		dvdd-supply = <&pm660_l3>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&cam_mclk1_default>, <&cam_reset1_default>;
 
@@ -592,4 +611,35 @@
 		bias-disable;
 		output-high;
 	};
+};
+
+/ {
+/*
+ * Camera I/O rail. The vendor tree points cam_vio at a phandle that resolves
+ * to nothing, so this is modelled as an always-on 1.8 V supply: the rail is
+ * shared with the rest of the board and never gated in the vendor driver.
+ */
+cam_vio_1v8: cam-vio-reg {
+	compatible = "regulator-fixed";
+	regulator-name = "cam_vio_1v8";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+
+/*
+ * Camera analog rail, switched by CAM_AVDD1 on TLMM 33 (vendor camera@1
+ * lists gpio-vana = 1 -> GPIO33 and carries no avdd supply of its own, i.e.
+ * it is a switch, not a regulator).
+ */
+cam_avdd_2v8: cam-avdd-reg {
+	compatible = "regulator-fixed";
+	regulator-name = "cam_avdd_2v8";
+	regulator-min-microvolt = <2800000>;
+	regulator-max-microvolt = <2800000>;
+	gpio = <&tlmm 33 GPIO_ACTIVE_HIGH>;
+	enable-active-high;
+	pinctrl-names = "default";
+	pinctrl-0 = <&cam_avdd_default>;
+};
 };
