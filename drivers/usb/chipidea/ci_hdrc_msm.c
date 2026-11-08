@@ -34,6 +34,7 @@
 #define HS_PHY_POR_ASSERT		BIT(0)
 
 struct ci_hdrc_msm {
+	struct delayed_work dbg_work;
 	struct platform_device *ci;
 	struct clk *core_clk;
 	struct clk *iface_clk;
@@ -76,6 +77,29 @@ static const struct reset_control_ops ci_hdrc_msm_reset_ops = {
 	.reset = ci_hdrc_msm_por_reset,
 };
 
+
+/* lk2nd uses these to poke ULPI registers through the core's viewport. */
+#define CI_ULPI_RUN		BIT(30)
+#define CI_ULPI_WRITE		BIT(29)
+#define CI_ULPI_ADDR(n)		((n) << 16)
+#define CI_ULPI_MISC_A_SET	0x97
+#define CI_ULPI_VBUSVLDEXT	(BIT(1) | BIT(0))
+
+static void ci_hdrc_msm_ulpi_misc_a(struct ci_hdrc *ci)
+{
+	int i;
+
+	hw_write(ci, OP_ULPI_VIEWPORT, 0xffffffff,
+		 CI_ULPI_RUN | CI_ULPI_WRITE | CI_ULPI_ADDR(CI_ULPI_MISC_A_SET) |
+		 CI_ULPI_VBUSVLDEXT);
+
+	for (i = 0; i < 100; i++) {
+		if (!hw_read(ci, OP_ULPI_VIEWPORT, CI_ULPI_RUN))
+			break;
+		udelay(10);
+	}
+}
+
 static int ci_hdrc_msm_notify_event(struct ci_hdrc *ci, unsigned event)
 {
 	struct device *dev = ci->dev->parent;
@@ -114,7 +138,14 @@ static int ci_hdrc_msm_notify_event(struct ci_hdrc *ci, unsigned event)
 			hw_write_id_reg(ci, HS_PHY_GENCONFIG_2,
 					HS_PHY_ULPI_TX_PKT_EN_CLR_FIX, 0);
 
-		if (!IS_ERR(ci->platdata->vbus_extcon.edev) || ci->role_switch) {
+		if (!IS_ERR(ci->platdata->vbus_extcon.edev) || ci->role_switch ||
+		    (ci->platdata->flags & CI_HDRC_VBUS_ALWAYS_ON)) {
+			/*
+			 * Order matters: point the PHY at the external
+			 * VBUS-valid signal first, then enable session-valid
+			 * in the link, then in the device controller.
+			 */
+			ci_hdrc_msm_ulpi_misc_a(ci);
 			hw_write_id_reg(ci, HS_PHY_GENCONFIG_2,
 					HS_PHY_SESS_VLD_CTRL_EN,
 					HS_PHY_SESS_VLD_CTRL_EN);
@@ -169,6 +200,28 @@ static int ci_hdrc_msm_mux_phy(struct ci_hdrc_msm *ci,
 	return 0;
 }
 
+
+/* capoffset is 0x100 on this SoC, so these are the standard DWC offsets. */
+#define CI_USBCMD	0x140
+#define CI_PORTSC	0x184
+#define CI_OTGSC	0x1a4
+#define CI_USBMODE	0x1a8
+
+static void ci_hdrc_msm_dbg_dump(struct work_struct *work)
+{
+	struct ci_hdrc_msm *ci = container_of(to_delayed_work(work),
+					      struct ci_hdrc_msm, dbg_work);
+
+	/* ci->base is region 1, i.e. CI base + 0x200, so walk back. */
+	void __iomem *b = ci->base - 0x200;
+
+	pr_info("usbdbg: USBCMD=%08x USBMODE=%08x PORTSC=%08x OTGSC=%08x\n",
+		readl_relaxed(b + CI_USBCMD),
+		readl_relaxed(b + CI_USBMODE),
+		readl_relaxed(b + CI_PORTSC),
+		readl_relaxed(b + CI_OTGSC));
+}
+
 static int ci_hdrc_msm_probe(struct platform_device *pdev)
 {
 	struct ci_hdrc_msm *ci;
@@ -191,6 +244,14 @@ static int ci_hdrc_msm_probe(struct platform_device *pdev)
 			  CI_HDRC_OVERRIDE_AHB_BURST |
 			  CI_HDRC_OVERRIDE_PHY_CONTROL;
 	ci->pdata.notify_event = ci_hdrc_msm_notify_event;
+
+	/*
+	 * This watch has a four-contact port: VBUS, D-, D+, GND.  There is no
+	 * ID pin and no VBUS sense line reaching the controller, so the only
+	 * way it can ever pull up D+ is to be told the bus is always there.
+	 */
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,vbus-always-on"))
+		ci->pdata.flags |= CI_HDRC_VBUS_ALWAYS_ON;
 
 	reset = devm_reset_control_get(&pdev->dev, "core");
 	if (IS_ERR(reset))
@@ -264,6 +325,9 @@ static int ci_hdrc_msm_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_no_callbacks(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
+
+	INIT_DELAYED_WORK(&ci->dbg_work, ci_hdrc_msm_dbg_dump);
+	schedule_delayed_work(&ci->dbg_work, 3 * HZ);
 
 	return 0;
 

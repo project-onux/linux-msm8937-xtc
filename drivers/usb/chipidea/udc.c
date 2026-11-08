@@ -2138,10 +2138,13 @@ static int ci_udc_start(struct usb_gadget *gadget,
 		return retval;
 	}
 
-	if (ci->vbus_active)
+	if (ci->vbus_active ||
+	    (ci->platdata->flags & CI_HDRC_VBUS_ALWAYS_ON)) {
+		ci->vbus_active = 1;
 		ci_hdrc_gadget_connect(gadget, 1);
-	else
+	} else {
 		usb_udc_vbus_handler(&ci->gadget, false);
+	}
 
 	return retval;
 }

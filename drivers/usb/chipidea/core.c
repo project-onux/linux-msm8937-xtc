@@ -1110,6 +1110,8 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 
 		/* Look for a legacy USB PHY from device-tree next */
 		if (!ci->phy) {
+			dev_info(dev, "usb: no generic phy (%pe), trying legacy\n",
+				 ci->phy);
 			ci->usb_phy = devm_usb_get_phy_by_phandle(dev->parent,
 								  "phys", 0);
 
@@ -1203,6 +1205,8 @@ static int ci_hdrc_probe(struct platform_device *pdev)
 		}
 	}
 
+	dev_info(dev, "usb: phy=%px usb_phy=%px role=%d\n",
+		 ci->phy, ci->usb_phy, ci_get_role(ci));
 	ci->role = ci_get_role(ci);
 	if (!ci_otg_is_fsm_mode(ci)) {
 		/* only update vbus status for peripheral */
