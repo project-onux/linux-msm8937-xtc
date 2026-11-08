@@ -1001,3 +1001,5 @@ cam_avdd_2v8: cam-avdd-reg {
 &pm660_charger {
 	monitored-battery = <&battery>;
 };
+
+

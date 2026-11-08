@@ -195,6 +195,14 @@
 		ranges;
 		#address-cells = <2>;
 		#size-cells = <2>;
+		ramoops@bff00000 {
+			compatible = "ramoops";
+			reg = <0x0 0xbff00000 0x0 0x100000>;
+			record-size = <0x20000>;
+			console-size = <0x60000>;
+			ftrace-size = <0x20000>;
+			pmsg-size = <0x20000>;
+		};
 
 		qseecom_mem: reserved@85b00000 {
 			reg = <0x0 0x85b00000 0x0 0x800000>;
@@ -1555,11 +1563,13 @@
 		};
 
 		sdhc_1: mmc@7824900 {
-			compatible = "qcom,sdhci-msm-v4";
+			compatible = "qcom,msm8937-sdhci", "qcom,sdhci-msm-v4";
 			reg = <0x07824900 0x500>,
-			      <0x07824000 0x800>;
+			      <0x07824000 0x800>,
+			      <0x07824e00 0x1000>;
 			reg-names = "hc",
-				    "core";
+				    "core",
+				    "cqhci";
 
 			interrupts = <GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
 				     <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
@@ -1577,7 +1587,6 @@
 					"sleep";
 			power-domains = <&rpmpd RPMPD_VDDCX>;
 			mmc-hs200-1_8v;
-			mmc-hs400-1_8v;
 			mmc-ddr-1_8v;
 			bus-width = <8>;
 			non-removable;
@@ -1585,7 +1594,7 @@
 		};
 
 		sdhc_2: mmc@7864900 {
-			compatible = "qcom,sdhci-msm-v4";
+			compatible = "qcom,msm8937-sdhci", "qcom,sdhci-msm-v4";
 			reg = <0x07864900 0x500>,
 			      <0x07864000 0x800>;
 			reg-names = "hc",
@@ -1796,6 +1805,7 @@
 			reset-names = "core";
 			phy_type = "ulpi";
 			dr_mode = "otg";
+			qcom,vbus-always-on;
 			hnp-disable;
 			srp-disable;
 			adp-disable;
