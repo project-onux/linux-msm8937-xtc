@@ -1170,7 +1170,8 @@ int msm_ispif_subdev_init(struct camss *camss,
 	snprintf(ispif->irq_name, sizeof(ispif->irq_name), "%s_%s",
 		 dev_name(dev), MSM_ISPIF_NAME);
 	if (camss->res->version == CAMSS_8x16 ||
-	    camss->res->version == CAMSS_8x39)
+	    camss->res->version == CAMSS_8x39 ||
+	    camss->res->version == CAMSS_8x37)
 		ret = devm_request_irq(dev, ispif->irq, ispif_isr_8x16,
 			       IRQF_TRIGGER_RISING, ispif->irq_name, ispif);
 	else if (camss->res->version == CAMSS_8x96 ||
