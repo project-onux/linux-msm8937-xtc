@@ -1501,7 +1501,7 @@ int wcn36xx_smd_config_sta(struct wcn36xx *wcn, struct ieee80211_vif *vif,
 
 	mutex_lock(&wcn->hal_mutex);
 
-	if (!wcn36xx_is_fw_version(wcn, 1, 2, 2, 24))
+	if (0) /* force v0 struct for ODM firmware */
 		ret = wcn36xx_smd_config_sta_v1(wcn, vif, sta);
 	else
 		ret = wcn36xx_smd_config_sta_v0(wcn, vif, sta);
@@ -1572,6 +1572,10 @@ static void wcn36xx_smd_set_bss_params(struct wcn36xx *wcn,
 	bss->rifs_mode = 0;
 	bss->beacon_interval = vif->bss_conf.beacon_int;
 	bss->dtim_period = vif_priv->dtim_period;
+	/* dtim_period is only filled in after association; the firmware
+	 * rejects a zero value with status 5 */
+	if (!bss->dtim_period)
+		bss->dtim_period = 1;
 
 	wcn36xx_smd_set_bss_ht_params(vif, sta, bss);
 
@@ -1756,14 +1760,18 @@ static int wcn36xx_smd_config_bss_v0(struct wcn36xx *wcn,
 	wcn36xx_smd_set_bss_params(wcn, vif, sta, bssid, update, bss);
 	wcn36xx_smd_set_sta_params(wcn, vif, sta, sta_params);
 
+	/* 0xff is the internal "unassigned" sentinel; the firmware rejects it */
+	if (sta_params->bssid_index == 0xff)
+		sta_params->bssid_index = 0;
+
 	PREPARE_HAL_BUF(wcn->hal_buf, (*msg));
 
-	wcn36xx_dbg(WCN36XX_DBG_HAL,
+	pr_info(
 		    "hal config bss bssid %pM self_mac_addr %pM bss_type %d oper_mode %d nw_type %d\n",
 		    bss->bssid, bss->self_mac_addr, bss->bss_type,
 		    bss->oper_mode, bss->nw_type);
 
-	wcn36xx_dbg(WCN36XX_DBG_HAL,
+	pr_info(
 		    "- sta bssid %pM action %d sta_index %d bssid_index %d aid %d type %d mac %pM\n",
 		    sta_params->bssid, sta_params->action,
 		    sta_params->sta_index, sta_params->bssid_index,
@@ -1771,6 +1779,7 @@ static int wcn36xx_smd_config_bss_v0(struct wcn36xx *wcn,
 		    sta_params->mac);
 
 	ret = wcn36xx_smd_send_and_wait(wcn, msg->header.len);
+	pr_info("CFGBSS len=%u\n", msg->header.len);
 	kfree(msg);
 
 	return ret;
@@ -1793,6 +1802,9 @@ static int wcn36xx_smd_config_bss_rsp(struct wcn36xx *wcn,
 	params = &rsp->bss_rsp_params;
 
 	if (params->status != WCN36XX_FW_MSG_RESULT_SUCCESS) {
+		print_hex_dump(KERN_INFO, "CFGBSSRSP: ", DUMP_PREFIX_OFFSET,
+				       16, 1, wcn->hal_buf,
+				       min_t(int, 48, wcn->hal_rsp_len), false);
 		wcn36xx_warn("hal config bss response failure: %d\n",
 			     params->status);
 		return -EIO;
@@ -1828,7 +1840,7 @@ int wcn36xx_smd_config_bss(struct wcn36xx *wcn, struct ieee80211_vif *vif,
 
 	mutex_lock(&wcn->hal_mutex);
 
-	if (!wcn36xx_is_fw_version(wcn, 1, 2, 2, 24))
+	if (0) /* force v0 struct for ODM firmware */
 		ret = wcn36xx_smd_config_bss_v1(wcn, vif, sta, bssid, update);
 	else
 		ret = wcn36xx_smd_config_bss_v0(wcn, vif, sta, bssid, update);

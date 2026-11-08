@@ -14,7 +14,7 @@
 #include <linux/rpmsg.h>
 #include <linux/soc/qcom/wcnss_ctrl.h>
 
-#define WCNSS_REQUEST_TIMEOUT	(5 * HZ)
+#define WCNSS_REQUEST_TIMEOUT	(20 * HZ)
 #define WCNSS_CBC_TIMEOUT	(10 * HZ)
 
 #define WCNSS_ACK_DONE_BOOTING	1
@@ -123,6 +123,8 @@ static int wcnss_ctrl_smd_callback(struct rpmsg_device *rpdev,
 				   void *priv,
 				   u32 addr)
 {
+	pr_info("WCNMSG type=%08x len=%08x count=%d\n",
+		((u32 *)data)[0], count >= 8 ? ((u32 *)data)[1] : 0, count);
 	struct wcnss_ctrl *wcnss = dev_get_drvdata(&rpdev->dev);
 	const struct wcnss_download_nv_resp *nvresp;
 	const struct wcnss_version_resp *version;

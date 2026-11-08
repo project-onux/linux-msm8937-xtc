@@ -1506,7 +1506,6 @@ struct wcn36xx_hal_config_sta_params {
 
 	/* TODO move this parameter to the end for 3680 */
 	/* These rates are the intersection of peer and self capabilities. */
-	struct wcn36xx_hal_supported_rates supported_rates;
 
 	/* Robust Management Frame (RMF) enabled/disabled */
 	u8 rmf;
@@ -1560,6 +1559,10 @@ struct wcn36xx_hal_config_sta_params {
 	/* TODO add this parameter for 3680. */
 	/* Reserved to align next field on a dword boundary */
 	/* u8 reserved; */
+
+	/* riva layout: reserved then supportedRates come last */
+	u8 vendor_reserved;
+	struct wcn36xx_hal_supported_rates supported_rates;
 } __packed;
 
 struct wcn36xx_hal_config_sta_req_msg {
@@ -1955,7 +1958,6 @@ struct wcn36xx_hal_config_bss_params {
 	 *  On STA - Add the AP to which this STA is joining in an
 	 *  "STA context"
 	 */
-	struct wcn36xx_hal_config_sta_params sta;
 	/* SSID of the BSS */
 	struct wcn36xx_hal_mac_ssid ssid;
 
@@ -2028,6 +2030,13 @@ struct wcn36xx_hal_config_bss_params {
 	/* maxTxPower has max power to be used after applying the power
 	 * constraint if any */
 	s8 max_tx_power;
+
+	/* Context of the station being added in HW.
+	 * The riva firmware layout puts this last, not after
+	 * `reserved`.
+	 */
+	struct wcn36xx_hal_config_sta_params sta;
+
 } __packed;
 
 struct wcn36xx_hal_config_bss_req_msg {
