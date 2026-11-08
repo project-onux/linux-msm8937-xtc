@@ -157,6 +157,7 @@ static int qcom_snps_hsphy_power_on(struct phy *phy)
 	struct hsphy_priv *priv = phy_get_drvdata(phy);
 	int ret;
 
+	pr_info("femtophy: power_on called\n");
 	ret = regulator_bulk_enable(VREG_NUM, priv->vregs);
 	if (ret)
 		return ret;
@@ -164,6 +165,7 @@ static int qcom_snps_hsphy_power_on(struct phy *phy)
 	qcom_snps_hsphy_disable_hv_interrupts(priv);
 	qcom_snps_hsphy_exit_retention(priv);
 
+	pr_info("femtophy: power on\n");
 	return 0;
 }
 
@@ -267,6 +269,10 @@ static int qcom_snps_hsphy_init(struct phy *phy)
 		goto disable_clocks;
 
 	qcom_snps_hsphy_init_sequence(priv);
+
+	pr_info("femtophy: reg43=%02x reg06=%02x reg40=%02x\n",
+		readb(priv->base + 0x43), readb(priv->base + 0x06),
+		readb(priv->base + 0x40));
 
 	ret = qcom_snps_hsphy_por_reset(priv);
 	if (ret)
@@ -399,6 +405,14 @@ static const struct hsphy_init_seq init_seq_femtophy[] = {
 	HSPHY_INIT_CFG(0x90, 0xe0, 20),
 	HSPHY_INIT_CFG(0x74, 0x10, 0),
 	HSPHY_INIT_CFG(0x90, 0x60, 0),
+	/*
+	 * From the vendor's qcom,hsusb-otg-phy-init-seq.  0x43 bit 7 is what
+	 * actually lets the PHY drive D+ high on this board; without it the
+	 * controller reports RS, VBUS and device mode but the bus stays in SE0
+	 * and no host ever sees the device.
+	 */
+	HSPHY_INIT_CFG(0x43, 0x80, 0),
+	HSPHY_INIT_CFG(0x06, 0x82, 0),
 };
 
 static const struct hsphy_data hsphy_data_femtophy = {
