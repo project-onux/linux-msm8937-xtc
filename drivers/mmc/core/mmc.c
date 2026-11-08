@@ -1902,8 +1902,11 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	 * be used with Command Queue.
 	 */
 	card->ext_csd.cmdq_en = false;
+	pr_info("CBPROBE init:cmdq-support=%d depth=%d caps2=%08x\n",
+		card->ext_csd.cmdq_support, card->ext_csd.cmdq_depth, host->caps2);
 	if (card->ext_csd.cmdq_support && host->caps2 & MMC_CAP2_CQE) {
 		err = mmc_cmdq_enable(card);
+		pr_info("CBPROBE init:cmdq-enable-ret=%d\n", err);
 		if (err && err != -EBADMSG)
 			goto free_card;
 		if (err) {
@@ -1921,7 +1924,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	card->reenable_cmdq = card->ext_csd.cmdq_en;
 
 	if (host->cqe_ops && !host->cqe_enabled) {
+		pr_info("CBPROBE init:about-cqe-enable\n");
 		err = host->cqe_ops->cqe_enable(host, card);
+		pr_info("CBPROBE init:cqe-enable-ret=%d\n", err);
 		if (!err) {
 			host->cqe_enabled = true;
 

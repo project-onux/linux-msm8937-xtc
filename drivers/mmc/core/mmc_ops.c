@@ -1031,7 +1031,12 @@ static int mmc_cmdq_switch(struct mmc_card *card, bool enable)
 
 int mmc_cmdq_enable(struct mmc_card *card)
 {
-	return mmc_cmdq_switch(card, true);
+	int __r;
+
+	pr_info("CBPROBE cmdq-enter\n");
+	__r = mmc_cmdq_switch(card, true);
+	pr_info("CBPROBE cmdq-switch-ret=%d\n", __r);
+	return __r;
 }
 EXPORT_SYMBOL_GPL(mmc_cmdq_enable);
 
